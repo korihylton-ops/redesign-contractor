@@ -1,0 +1,10 @@
+{
+  "name": "contractor-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contractor website engine: marketing site, lead backend, admin dashboard and chat assistant",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "express": "^4.21.2", "stripe": "^17.5.0" }
+}

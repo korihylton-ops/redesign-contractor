@@ -1,0 +1,21 @@
+# SITE_SLUG and SITE_HOST come from .env (written by scripts/new-project.mjs).
+# Requires the external "traefik" network (see docs/DEPLOY.md) and DNS for SITE_HOST pointing at the server.
+services:
+  site:
+    build: .
+    container_name: ${SITE_SLUG:-site}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    networks:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SITE_SLUG:-site}.rule=Host(`${SITE_HOST:-localhost}`)"
+      - "traefik.http.routers.${SITE_SLUG:-site}.entrypoints=websecure"
+      - "traefik.http.routers.${SITE_SLUG:-site}.tls.certresolver=le"
+      - "traefik.http.services.${SITE_SLUG:-site}.loadbalancer.server.port=3000"
+networks:
+  traefik:
+    external: true

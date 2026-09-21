@@ -1,0 +1,22 @@
+{
+  "_comment": "Content floors every generated site must meet. Benchmark (the reference electrician build): 210 pages, ~310,000 words, 34 suburbs, 16 services, 10 FAQs, 10 reviews, 12 gallery photos. Aim for the benchmark; these are the minimums.",
+  "suburbs": 30,
+  "regions": 3,
+  "regionPages": 2,
+  "servicesFeatured": 8,
+  "servicesTotal": 12,
+  "faqs": 10,
+  "reviews": 6,
+  "gallery": 12,
+  "stats": 4,
+  "bento": 6,
+  "steps": 4,
+  "priceSheet": 6,
+  "offers": 1,
+  "totalPages": 120,
+  "totalWords": 60000,
+  "sourceTextCoverage": 0.999,
+  "minWordsPerSuburbPage": 250,
+  "minWordsPerServicePage": 300,
+  "heroImageMinKB": 100
+}

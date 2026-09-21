@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.admin-password.txt
+data/*.json
+*.log
+qa-shots/
+_scrape/
+_tmp-test*/
+projects/

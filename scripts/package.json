@@ -1,0 +1,9 @@
+{
+  "name": "redesign-contractor-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scrape, extract, brand, photo and validation tooling for the redesign-contractor skill",
+  "dependencies": { "cheerio": "^1.0.0" },
+  "optionalDependencies": { "playwright": "^1.48.0" }
+}
