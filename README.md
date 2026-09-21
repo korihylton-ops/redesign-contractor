@@ -8,6 +8,8 @@ A skill that rebuilds any contractor's website (electrician, plumber, HVAC, roof
 - A backend in one container: quote form, admin dashboard (leads and bookings, calendar, chats, traffic, conversions, settings), Stripe deposit links, Resend emails.
 - A **DeepSeek chatbot** that answers from the business's real facts, captures leads straight into the admin, offers call and text, presents an upgrade offer, and falls back to a scripted flow if the API is down.
 - **Conversion tracking**: every call, text and quote click and every chat or form lead is recorded by source.
+- **One-command deploy**: a new private GitHub repo per site, uploaded to your server behind Traefik with HTTPS, and the live URL returned. Demo sites are `noindex`.
+- **Images**: uses the client's photos; anything missing is generated (AI photos with an image API key, otherwise clean illustrations) and labelled as illustrative.
 - **Content floors** enforced by script: 30+ suburbs, 12+ services, 120+ pages, 60,000+ words, 10+ FAQs, 12+ photos, and 99.9% of the source text carried over.
 
 ## Install as a skill
@@ -30,6 +32,10 @@ Keys are **never stored in this repo**. The skill asks you for them and writes t
 | `DEEPSEEK_API_KEY` | chatbot replies and lead capture | recommended (scripted fallback works without it) |
 | `STRIPE_SECRET_KEY` | deposit payment links | optional |
 | `RESEND_API_KEY` | lead alerts and deposit emails | optional |
+| `OPENAI_API_KEY` | AI-generated photos when a site has none | optional (illustrations are used without it) |
+| `CLOUDFLARE_API_TOKEN` | auto-create the DNS record for `<slug>.<your domain>` | optional |
+
+Server details (host, SSH key path, base domain) live in `~/.redesign-contractor/server.json` on your machine, created by `scripts/setup-server.mjs`. They are never part of this repo.
 
 Set them in your shell before running the skill (`export DEEPSEEK_API_KEY=...`) or paste them into the project's `.env` afterwards. If you ever paste a key into a chat or commit it, rotate it.
 

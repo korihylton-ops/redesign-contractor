@@ -1,6 +1,6 @@
 # Deploying a generated site (Docker + Traefik)
 
-Only deploy when the user asks. The default deliverable is a local demo.
+Deployment is automatic: `node scripts/deploy.mjs <project>` creates a new private GitHub repo, uploads the site to the server in `~/.redesign-contractor/server.json`, and prints the live URL. Set the server up once with `scripts/setup-server.mjs` (see SKILL.md, Phase 9). The manual steps below are what the script does, for reference or for a new server.
 
 ## One-time server setup
 ```bash

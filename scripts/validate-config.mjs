@@ -64,7 +64,8 @@ need('total pages served', built.size, floors.totalPages);
 need('total words across pages', totalWords, floors.totalWords);
 need('suburb pages with enough text', sub.length - shortSub.length, sub.length, true, shortSub.length ? 'Too short: ' + shortSub.slice(0, 8).join(', ') + (shortSub.length > 8 ? '...' : '') : '');
 need('service pages with enough text', svc.length - shortSvc.length, svc.length, true, shortSvc.length ? 'Too short: ' + shortSvc.slice(0, 8).join(', ') : '');
-need('hero image size (KB)', heroKB, floors.heroImageMinKB, true, 'Use a sharp, large hero photo');
+const heroGenerated = ((cfg.images || {}).generatedFiles || []).includes(cfg.images && cfg.images.hero);
+need('hero image size (KB)', heroKB, floors.heroImageMinKB, !heroGenerated, heroGenerated ? 'Hero is a generated illustration: replace it with a real photo when one is available' : 'Use a sharp, large hero photo');
 truthy('all referenced images exist in public/images', missingImages.length === 0, missingImages.slice(0, 6).join(', '));
 
 const fails = checks.filter((c) => !c.ok && c.hard), warns = checks.filter((c) => !c.ok && !c.hard);

@@ -237,7 +237,7 @@ ${allReviews().length ? `<section class="section" id="reviews">
 ${C.gallery.length ? `<section class="section section--paper" id="work">
   <div class="wrap">
     <h2 data-split>${t(wk.heading || 'Recent work')}</h2>
-    <p class="lede">${t(wk.lede || 'Real jobs from our own crew.')}</p>
+    <p class="lede">${C.images.generatedGallery ? 'Illustrative examples of the kind of work we do.' : t(wk.lede || 'Real jobs from our own crew.')}</p>
     <div class="work">${work}</div>
     <dialog class="lightbox" aria-label="Photo"><img alt=""><button type="button" aria-label="Close">&times;</button></dialog>
   </div>

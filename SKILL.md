@@ -15,8 +15,9 @@ Turn an existing contractor website into the same premium site every time: light
 2. **Keep 100% of the original text.** Every page and post on the old site is rebuilt at the same URL with all its text (`verify-text.mjs` must pass at 99.9% or better).
 3. **Meet the content floors** in `scripts/floors.json` (suburbs, services, pages, words, FAQs, reviews, gallery). If the source site is thin, write real, grounded extra pages until `validate-config.mjs` passes. Do not lower the floors to make a build pass.
 4. **Secrets never go in git, in the config, in logs or in chat replies.** API keys live only in the project's `.env` (gitignored). If a key is in your context, use it, do not echo it. Tell the user to rotate any key they pasted into a chat.
-5. **Do not deploy or publish unless the user asks.** A demo on localhost is the default deliverable.
+5. **Deployment is part of the job.** Every finished site goes to a NEW PRIVATE GitHub repo, is uploaded to the user's Contabo server, and you return the live URL. Never make a client repo public. Demo sites are `noindex` so they do not compete with the client's real site.
 6. **Never copy another business's copy.** Write original text.
+7. **Real photos first; generated images are illustrative.** Use the client's own photos. Only when a needed image cannot be found, generate it (Phase 3). Generated images must never be presented as real jobs, a real team or real people: prompts exclude people, text and logos, the site labels a generated gallery as illustrative, and you list every generated file in your report.
 
 ## Inputs
 
@@ -58,6 +59,7 @@ node scripts/photos.mjs collect --in <work>/_scrape --out <work>/_scrape
 - Look at `original-home.png` and `brand.json`. Choose `primary` (the client's real action colour), `ink` (a dark that suits it; avoid pure black), `surface` (near-white), and Google Fonts that fit the trade. The engine derives accessible text colours automatically.
 - View every `contact-sheet-N.png` with the Read tool. Pick real job photos: a sharp hero over 100KB, an about/team photo, a wide feature photo, at least 12 gallery photos and one photo per featured service. **Reject** photos with baked-in text, marketing graphics, stock imagery, screenshots and blurry shots.
 - Write a map of candidate id to name and run `node scripts/photos.mjs pick --from <work>/_scrape/candidates --map map.json --out <project>/public/images`. Copy the logo to `public/images/`.
+- **If usable photos are missing** (site has too few, they are unusable, or the site was blocked), fill the gaps after Phase 6 with `node scripts/generate-images.mjs <project>`. It generates only the images the config references that do not exist yet. With `OPENAI_API_KEY` set it makes AI photographs (no people, text or logos); with no key it renders clean brand-coloured illustrations and a text logo. It records what it generated in `config.images.generatedFiles`, and the site then labels the gallery as illustrative. Replace generated images with real photos whenever they become available.
 
 ## Phase 4: Service area
 
@@ -104,16 +106,41 @@ node scripts/qa.mjs <project> --url http://localhost:3000
 
 Open the screenshots in `<project>/qa-shots/` and check them yourself: hero, services selector, bento, reviews, a suburb page, an article, the chat, the admin. Fix anything broken before reporting. If something fails, diagnose the cause before changing code.
 
-## Phase 9: Deliver
+## Phase 9: Deploy (private repo, then the Contabo server)
+
+One-time per machine, if `~/.redesign-contractor/server.json` does not exist: ask the user for the server IP, SSH user, SSH key path and the base domain their sites live under, then run
+
+```bash
+node scripts/setup-server.mjs --host <ip> --user root --key ~/.ssh/id_ed25519 --base-domain <domain> --github-owner <gh user>
+```
+
+It verifies SSH, Docker and Traefik. (Optional: `--cloudflare-token` lets deploys create the DNS record automatically.) `gh` must be logged in (`gh auth status`); if not, ask the user to run `! gh auth login`.
+
+Then, for every site:
+
+```bash
+node scripts/deploy.mjs <project> --dry-run      # optional preview: checks the upload manifest and secret scan
+node scripts/deploy.mjs <project>
+```
+
+It scans tracked files for secrets and refuses to push if any are found, creates a new **private** repo `<owner>/<slug>-site`, uploads the project (with its `.env`, over SSH, never via git) to `/opt/sites/<slug>`, builds the container behind Traefik, generates a fresh strong admin password, and verifies over HTTPS. Read its output: it lists which URLs are LIVE. There are two hostnames:
+
+- `https://<slug>.<ip-dashes>.sslip.io` works immediately with no DNS.
+- `https://<slug>.<base domain>` works once its DNS record exists (automatic with a Cloudflare token, otherwise the user adds an A record to the server IP; the script prints exactly which).
+
+If nothing answers, diagnose (`docker logs <slug>` on the server, DNS) before reporting. Use `--index` only when the client's real domain points at the site.
+
+## Phase 10: Deliver
 
 Tell the user, briefly and honestly:
 
-- Where the site is running, the admin URL and password, and that the DeepSeek key is in `.env` (or that chat is on the scripted fallback).
+- **The live URL(s)**, the admin URL and password, and the private repo URL. Say that the DeepSeek key is on the server in `.env` (or that chat is on the scripted fallback).
+- Which images were generated rather than taken from the client's site.
 - What was carried over (pages, words, suburbs, services) and the verification results.
 - A **CONFIRM list**: every price, rate, licence, offer or claim that came from an ambiguous source or that you could not verify (for example conflicting prices on the old site, placeholder upgrade offers, an unlicensed trade).
 - What is not built: PayPal and Google Calendar sync (shown in Settings as "Not built yet"), and anything skipped.
 
-Only if the user asks to publish or deploy, follow `docs/DEPLOY.md` (Docker and Traefik on their server, DNS for the domain or subdomain first).
+When the client is ready to go live on their own domain, follow `docs/DEPLOY.md` (point the domain at the server, then redeploy with `--index`).
 
 ## What the engine provides (do not rebuild it)
 

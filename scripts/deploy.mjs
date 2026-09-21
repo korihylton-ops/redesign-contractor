@@ -1,0 +1,227 @@
+#!/usr/bin/env node
+// Push a generated site to a NEW PRIVATE GitHub repo, upload it to the Contabo server, and print the live URL.
+//   node scripts/deploy.mjs <projectDir> [--dry-run] [--no-github] [--keep-password] [--index] [--slug name]
+// Needs: ~/.redesign-contractor/server.json (scripts/setup-server.mjs), `gh` logged in, ssh + tar on PATH.
+// Secrets: the project's .env is uploaded to the server over SSH and is NEVER committed to git.
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import crypto from 'crypto';
+import dns from 'dns/promises';
+import { spawn, spawnSync } from 'child_process';
+
+const argv = process.argv.slice(2);
+const proj = path.resolve(argv.find((a) => !a.startsWith('--')) || '.');
+const flag = (n) => argv.includes('--' + n);
+const opt = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
+const DRY = flag('dry-run');
+const home = os.homedir();
+const expand = (p) => (p || '').replace(/^~(?=$|[\\/])/, home);
+const log = (...a) => console.log(...a);
+const fail = (m) => { console.error('\nDEPLOY STOPPED: ' + m); process.exit(1); };
+
+/* ---------- load config ---------- */
+const serverFile = path.join(home, '.redesign-contractor', 'server.json');
+if (!fs.existsSync(serverFile)) fail('No server config. Run: node scripts/setup-server.mjs --host <ip> --user root --key ~/.ssh/id_ed25519 --base-domain <your domain>');
+const S = JSON.parse(fs.readFileSync(serverFile, 'utf8'));
+const cfgFile = path.join(proj, 'content', 'config.json');
+if (!fs.existsSync(cfgFile)) fail('Not a generated project (no content/config.json): ' + proj);
+const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+const envFile = path.join(proj, '.env');
+if (!fs.existsSync(envFile)) fail('No .env in the project. Run scripts/new-project.mjs first.');
+
+const readEnv = () => Object.fromEntries(fs.readFileSync(envFile, 'utf8').split(/\r?\n/).filter((l) => /^[A-Z0-9_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
+const writeEnv = (updates) => {
+  let text = fs.readFileSync(envFile, 'utf8');
+  for (const [k, v] of Object.entries(updates)) text = new RegExp(`^${k}=.*$`, 'm').test(text) ? text.replace(new RegExp(`^${k}=.*$`, 'm'), `${k}=${v}`) : text.replace(/\n*$/, `\n${k}=${v}\n`);
+  fs.writeFileSync(envFile, text);
+};
+const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+const slug = slugify(opt('slug', readEnv().SITE_SLUG || (cfg.business && cfg.business.name) || path.basename(proj)));
+if (!slug) fail('Could not derive a site slug.');
+
+/* ---------- hosts ---------- */
+const ip = /^\d+\.\d+\.\d+\.\d+$/.test(S.host) ? S.host : (await dns.lookup(S.host)).address;
+const sslipHost = `${slug}.${ip.replace(/\./g, '-')}.sslip.io`;
+const prettyHost = S.baseDomain ? `${slug}.${S.baseDomain}` : '';
+const remoteDir = `${S.sitesDir.replace(/\/$/, '')}/${slug}`;
+log(`Deploying "${slug}" to ${S.user}@${S.host}:${remoteDir}`);
+log(`  hosts: ${[prettyHost, sslipHost].filter(Boolean).join(' , ')}${DRY ? '   [DRY RUN: nothing will be changed]' : ''}`);
+
+/* ---------- ssh helpers ---------- */
+const sshBase = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', '-i', expand(S.keyPath), '-p', String(S.port || 22), `${S.user}@${S.host}`];
+const ssh = (cmd, ms = 60000) => spawnSync('ssh', sshBase.concat([cmd]), { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, timeout: ms, stdio: ['ignore', 'pipe', 'pipe'] });
+const chk = ssh('echo ok');
+if (chk.status !== 0) fail('Cannot SSH to the server: ' + (chk.stderr || '').trim());
+
+/* ---------- 1. project prep: robots, hosts, password, compose ---------- */
+let password = null;
+if (!DRY) {
+  const upd = { SITE_URL: `https://${prettyHost || sslipHost}`, SITE_SLUG: slug, SITE_HOST: prettyHost || sslipHost, NOINDEX: flag('index') ? '0' : '1' };
+  const redeploy = fs.existsSync(path.join(proj, '.deploy.json'));
+  if (!flag('keep-password') && !redeploy) {
+    const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    password = Array.from(crypto.randomBytes(20)).map((x) => alphabet[x % alphabet.length]).join('');
+    upd.ADMIN_PASSWORD_HASH = crypto.createHash('sha256').update(password).digest('hex');
+    fs.writeFileSync(path.join(proj, '.admin-password.txt'), password + '\n');
+  }
+  writeEnv(upd);
+}
+const rule = [prettyHost, sslipHost].filter(Boolean).map((h) => 'Host(`' + h + '`)').join(' || ');
+const routerLines = [[slug, sslipHost], ...(prettyHost ? [[slug + '-dns', prettyHost]] : [])].map(([name, host]) => `      - "traefik.http.routers.${name}.rule=Host(\`${host}\`)"\n      - "traefik.http.routers.${name}.entrypoints=websecure"\n      - "traefik.http.routers.${name}.tls.certresolver=${S.certResolver}"\n      - "traefik.http.routers.${name}.service=${slug}"`).join('\n');
+const compose = `# Generated by scripts/deploy.mjs. Requires the external "${S.network}" network and Traefik on the server.
+services:
+  site:
+    build: .
+    container_name: ${slug}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    networks:
+      - ${S.network}
+    labels:
+      - "traefik.enable=true"
+${routerLines}
+      - "traefik.http.services.${slug}.loadbalancer.server.port=3000"
+networks:
+  ${S.network}:
+    external: true
+`;
+if (!DRY) fs.writeFileSync(path.join(proj, 'docker-compose.yml'), compose);
+
+/* ---------- 2. private GitHub repo (with a secret scan first) ---------- */
+let repoUrl = '(skipped)';
+const git = (args, o = {}) => spawnSync('git', args, Object.assign({ cwd: proj, encoding: 'utf8' }, o));
+if (!flag('no-github')) {
+  if (!fs.existsSync(path.join(proj, '.git'))) { if (!DRY) git(['init', '-q', '-b', 'main']); }
+  if (!DRY) { git(['add', '-A']); }
+  const staged = DRY ? [] : git(['ls-files']).stdout.split('\n').filter(Boolean);
+  const bad = staged.filter((f) => /(^|\/)\.env$|admin-password|(^|\/)data\/.*\.json$|node_modules\//.test(f));
+  if (bad.length) fail('Refusing to push: secret-ish files are tracked: ' + bad.join(', '));
+  const envVals = Object.entries(readEnv()).filter(([k, v]) => !/^(SITE_|NOTIFY_|RESEND_FROM|DEEPSEEK_MODEL|DEEPSEEK_BASE_URL|NOINDEX)/.test(k) && v && v.length >= 12).map(([, v]) => v);
+  if (!DRY) {
+    for (const v of envVals) { const g = git(['grep', '--cached', '-lF', '--', v]); if (g.stdout.trim()) fail('Refusing to push: a secret from .env appears in tracked file(s): ' + g.stdout.trim().split('\n').join(', ')); }
+    const g2 = git(['grep', '--cached', '-nIE', 'sk-[A-Za-z0-9]{20,}|sk_live|whsec_|re_[A-Za-z0-9]{20,}']);
+    if (g2.stdout.trim()) fail('Refusing to push: key-like strings in tracked files:\n' + g2.stdout.trim().split('\n').slice(0, 5).join('\n'));
+  }
+  const gh = spawnSync('gh', ['api', 'user', '--jq', '.login'], { encoding: 'utf8' });
+  if (gh.status !== 0) fail('gh is not logged in. Run: gh auth login');
+  const owner = S.githubOwner || gh.stdout.trim();
+  let repoName = `${slug}-site`;
+  if (DRY) { repoUrl = `https://github.com/${owner}/${repoName} (would be created PRIVATE)`; }
+  else {
+    git(['-c', 'user.email=' + (S.gitEmail || 'deploy@localhost'), '-c', 'user.name=' + owner, 'commit', '-q', '-m', `Site build for ${cfg.business.name}\n\nCo-Authored-By: Claude <noreply@anthropic.com>`]);
+    const origin = git(['remote', 'get-url', 'origin']);
+    if (origin.status === 0 && origin.stdout.trim()) {
+      const m = origin.stdout.trim().match(/github\.com[/:]([^/]+)\/(.+?)(\.git)?$/);
+      const push = git(['push', '-q', 'origin', 'HEAD']);
+      if (push.status !== 0) fail('git push to the existing repo failed:\n' + (push.stderr || ''));
+      repoName = m ? m[2] : repoName;
+      const vis0 = spawnSync('gh', ['repo', 'view', `${owner}/${repoName}`, '--json', 'visibility', '--jq', '.visibility'], { encoding: 'utf8' }).stdout.trim();
+      if (vis0 !== 'PRIVATE') fail(`Repo ${owner}/${repoName} is ${vis0}, not PRIVATE.`);
+      repoUrl = `https://github.com/${owner}/${repoName}`;
+    } else {
+    if (spawnSync('gh', ['repo', 'view', `${owner}/${repoName}`], { encoding: 'utf8' }).status === 0) repoName += '-' + String(Date.now()).slice(-5);
+    const mk = spawnSync('gh', ['repo', 'create', `${owner}/${repoName}`, '--private', '--source=.', '--remote=origin', '--push'], { cwd: proj, encoding: 'utf8' });
+    if (mk.status !== 0) fail('Could not create the private repo:\n' + (mk.stderr || mk.stdout));
+    const vis = spawnSync('gh', ['repo', 'view', `${owner}/${repoName}`, '--json', 'visibility', '--jq', '.visibility'], { encoding: 'utf8' }).stdout.trim();
+    if (vis !== 'PRIVATE') fail(`Repo ${owner}/${repoName} is ${vis}, not PRIVATE. Fix it on GitHub immediately.`);
+    repoUrl = `https://github.com/${owner}/${repoName}`;
+    }
+  }
+  log('  github:', repoUrl);
+}
+
+/* ---------- 3. upload (tar over ssh; .env goes over the encrypted channel, never via git) ---------- */
+const excludes = ['node_modules', '.git', 'qa-shots', 'data', '.admin-password.txt', '_scrape', '*.log'];
+const tarArgs = ['-czf', '-', ...excludes.flatMap((e) => ['--exclude', e]), '-C', proj, '.'];
+if (DRY) {
+  const list = spawnSync('tar', ['-czf', '-', ...excludes.flatMap((e) => ['--exclude', e]), '-C', proj, '.'], { maxBuffer: 512 * 1024 * 1024 });
+  const ls = spawnSync('tar', ['-tzf', '-'], { input: list.stdout, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).stdout.split('\n').filter(Boolean);
+  log(`  upload manifest: ${ls.length} entries, ${(list.stdout.length / 1e6).toFixed(1)} MB compressed`);
+  log('  includes .env:', ls.some((f) => /(^|\/)\.env$/.test(f)), '| includes .admin-password.txt:', ls.some((f) => /admin-password/.test(f)), '| includes node_modules:', ls.some((f) => /node_modules/.test(f)));
+  log('\nDRY RUN complete. Compose rule would be:', rule);
+  process.exit(0);
+}
+log('  uploading...');
+{
+  // Plain tarball + scp (no stdin/stdout piping: piping tar into ssh hangs on Windows).
+  const tgzName = slug + '-' + Date.now() + '.tgz';
+  const tgz = path.join(os.tmpdir(), tgzName);
+  const mk = spawnSync('tar', ['-czf', tgzName, ...excludes.flatMap((e) => ['--exclude', e]), '-C', proj, '.'], { encoding: 'utf8', timeout: 300000, cwd: os.tmpdir() });
+  if (mk.status !== 0) fail('Could not create the upload archive: ' + (mk.stderr || mk.error));
+  const scpArgs = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', '-i', expand(S.keyPath), '-P', String(S.port || 22), tgzName, S.user + '@' + S.host + ':/tmp/' + slug + '.tgz'];
+  const cp = spawnSync('scp', scpArgs, { encoding: 'utf8', timeout: 600000, cwd: os.tmpdir() });
+  fs.rmSync(tgz, { force: true });
+  if (cp.status !== 0) fail('Upload failed: ' + (cp.stderr || cp.error));
+  const ex = ssh('mkdir -p ' + remoteDir + ' && tar xzf /tmp/' + slug + '.tgz --no-same-owner -C ' + remoteDir + ' && rm -f /tmp/' + slug + '.tgz && echo extracted', 120000);
+  if (!/extracted/.test(ex.stdout || '')) fail('Remote extract failed: ' + (ex.stderr || ex.stdout));
+}
+
+/* ---------- 4. optional Cloudflare DNS for the pretty hostname ---------- */
+const cfToken = process.env.CLOUDFLARE_API_TOKEN || S.cloudflareToken;
+let dnsNote = '';
+if (prettyHost && cfToken) {
+  try {
+    const H = { Authorization: 'Bearer ' + cfToken, 'Content-Type': 'application/json' };
+    const z = await (await fetch(`https://api.cloudflare.com/client/v4/zones?name=${S.baseDomain}`, { headers: H })).json();
+    const zone = z.result && z.result[0];
+    if (!zone) throw new Error('zone not found for ' + S.baseDomain);
+    const ex = await (await fetch(`https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records?type=A&name=${prettyHost}`, { headers: H })).json();
+    if (ex.result && ex.result.length) dnsNote = `DNS record for ${prettyHost} already exists.`;
+    else {
+      const c = await (await fetch(`https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records`, { method: 'POST', headers: H, body: JSON.stringify({ type: 'A', name: prettyHost, content: ip, proxied: true, ttl: 1 }) })).json();
+      dnsNote = c.success ? `Created Cloudflare DNS record ${prettyHost} -> ${ip}.` : 'Cloudflare refused the DNS record: ' + JSON.stringify(c.errors);
+    }
+  } catch (e) { dnsNote = 'Cloudflare DNS step failed: ' + e.message; }
+} else if (prettyHost) {
+  dnsNote = `To enable https://${prettyHost}, add an A record: ${slug}  ->  ${ip} (in Cloudflare for ${S.baseDomain}), or give the skill a Cloudflare token.`;
+}
+if (dnsNote) log('  dns:', dnsNote);
+
+/* ---------- 5. build + start ---------- */
+log('  building and starting the container (first build takes a minute or two)...');
+const up = ssh(`cd ${remoteDir} && docker compose up -d --build 2>&1`, 900000);
+const upOut = ((up.stdout || '') + (up.stderr || '')).trim().split('\n');
+log(upOut.slice(-8).map((l) => '    ' + l.slice(0, 140)).join('\n'));
+if (up.status !== 0) fail('docker compose failed (exit ' + up.status + (up.error ? ', ' + up.error.code : '') + '):\n' + upOut.slice(-25).join('\n'));
+let health = '';
+for (let i = 0; i < 25; i++) {
+  health = (ssh(`docker inspect -f '{{.State.Health.Status}}' ${slug} 2>/dev/null || docker inspect -f '{{.State.Status}}' ${slug} 2>/dev/null`, 20000).stdout || '').trim();
+  if (health === 'healthy' || health === 'running') break;
+  await new Promise((r) => setTimeout(r, 4000));
+}
+log('  container:', health || 'unknown');
+if (health !== 'healthy' && health !== 'running') fail('Container did not become healthy. Logs:\n' + ssh(`docker logs --tail 30 ${slug} 2>&1`).stdout);
+
+/* ---------- 6. verify over the internet (waits for Let's Encrypt) ---------- */
+async function probe(host) {
+  const out = { host, ok: false };
+  for (let i = 0; i < 30; i++) {
+    try {
+      const home = await fetch(`https://${host}/`, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+      if (home.status === 200) {
+        const admin = await fetch(`https://${host}/admin.html`, { signal: AbortSignal.timeout(15000) });
+        const leads = await fetch(`https://${host}/api/leads`, { signal: AbortSignal.timeout(15000) });
+        Object.assign(out, { ok: admin.status === 200 && leads.status === 401, home: 200, admin: admin.status, api: leads.status });
+        return out;
+      }
+      out.home = home.status;
+    } catch (e) { out.err = e.cause && e.cause.code ? e.cause.code : e.message; }
+    await new Promise((r) => setTimeout(r, 6000));
+  }
+  return out;
+}
+const results = [await probe(sslipHost)];
+if (prettyHost) { const dnsOk = await dns.resolve4(prettyHost).then(() => true, () => false); results.push(dnsOk ? await probe(prettyHost) : { host: prettyHost, ok: false, err: 'no DNS record yet' }); }
+
+fs.writeFileSync(path.join(proj, '.deploy.json'), JSON.stringify({ slug, repo: repoUrl, server: S.host, dir: remoteDir, urls: results.map((r) => ({ url: 'https://' + r.host, ok: r.ok })), deployedAt: new Date().toISOString() }, null, 2));
+log('\n================ DEPLOYED ================');
+results.forEach((r) => log(`${r.ok ? 'LIVE ' : 'NOT YET'}  https://${r.host}${r.ok ? '' : '   (' + (r.err || 'status ' + r.home) + ')'}`));
+log('Admin:    https://' + (results.find((r) => r.ok) || results[0]).host + '/admin.html');
+if (!password) log('Password: unchanged (see .admin-password.txt in the project)');
+if (password) log('Password: ' + password + '   (also in the project\'s .admin-password.txt)');
+log('Repo:     ' + repoUrl + '  (private)');
+log('Search engines: ' + (flag('index') ? 'allowed' : 'blocked (demo). Redeploy with --index when the client domain goes live.'));
+if (!results.some((r) => r.ok)) { console.error('\nNothing is answering yet. Check: docker logs ' + slug + ' on the server, and DNS.'); process.exit(2); }

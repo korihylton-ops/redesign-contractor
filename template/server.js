@@ -152,6 +152,7 @@ app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (process.env.NOINDEX === '1') res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // demo sites must not compete with the client's real site
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
@@ -452,7 +453,7 @@ app.use(express.static(PUBLIC_DIR, { index: false, maxAge: '7d', setHeaders: (re
 const pages = pagesLib.buildAll();
 const sendHtml = (res, html, status) => res.status(status || 200).type('html').set('Cache-Control', 'no-cache').send(html);
 
-app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin.html\nDisallow: /api/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`));
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(process.env.NOINDEX === '1' ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\nDisallow: /admin.html\nDisallow: /api/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
   const urls = [...pages.keys()].map((p) => `<url><loc>${SITE_URL}${p === '/' ? '/' : p}</loc></url>`).join('');
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);

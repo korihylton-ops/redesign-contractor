@@ -45,6 +45,7 @@ const env = [
   'SITE_URL=' + (cfg.site && cfg.site.siteUrl ? cfg.site.siteUrl : ''),
   'SITE_SLUG=' + String((cfg.business && cfg.business.name) || 'site').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
   'SITE_HOST=' + (() => { try { return new URL(cfg.site.siteUrl).hostname; } catch (e) { return 'localhost'; } })(),
+  'NOINDEX=1',
   'DEEPSEEK_API_KEY=' + (process.env.DEEPSEEK_API_KEY || ''),
   'DEEPSEEK_MODEL=deepseek-chat',
   'DEEPSEEK_BASE_URL=https://api.deepseek.com',
