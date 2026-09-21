@@ -114,7 +114,7 @@ One-time per machine, if `~/.redesign-contractor/server.json` does not exist: as
 node scripts/setup-server.mjs --host <ip> --user root --key ~/.ssh/id_ed25519 --base-domain <domain> --github-owner <gh user>
 ```
 
-It verifies SSH, Docker and Traefik. (Optional: `--cloudflare-token` lets deploys create the DNS record automatically.) `gh` must be logged in (`gh auth status`); if not, ask the user to run `! gh auth login`.
+It verifies SSH, Docker and Traefik. Add `--cloudflare-token <token>` (an API token with Zone > DNS > Edit on the base domain): every deploy then creates the subdomain for you. Without a token the deploy can only print the DNS record the user would have to add by hand, so always get one. `gh` must be logged in (`gh auth status`); if not, ask the user to run `! gh auth login`.
 
 Then, for every site:
 
@@ -125,8 +125,8 @@ node scripts/deploy.mjs <project>
 
 It scans tracked files for secrets and refuses to push if any are found, creates a new **private** repo `<owner>/<slug>-site`, uploads the project (with its `.env`, over SSH, never via git) to `/opt/sites/<slug>`, builds the container behind Traefik, generates a fresh strong admin password, and verifies over HTTPS. Read its output: it lists which URLs are LIVE. There are two hostnames:
 
-- `https://<slug>.<ip-dashes>.sslip.io` works immediately with no DNS.
-- `https://<slug>.<base domain>` works once its DNS record exists (automatic with a Cloudflare token, otherwise the user adds an A record to the server IP; the script prints exactly which).
+- **`https://<slug>.<base domain>` is the link to give the user.** Every deploy creates this subdomain itself through Cloudflare (an A record, DNS only, pointing at the server), so it is live with no manual step.
+- `https://<slug>.<ip-dashes>.sslip.io` is a backup address that works with no DNS at all.
 
 If nothing answers, diagnose (`docker logs <slug>` on the server, DNS) before reporting. Use `--index` only when the client's real domain points at the site.
 
@@ -134,11 +134,13 @@ If nothing answers, diagnose (`docker logs <slug>` on the server, DNS) before re
 
 Tell the user, briefly and honestly:
 
-- **The live URL(s)**, the admin URL and password, and the private repo URL. Say that the DeepSeek key is on the server in `.env` (or that chat is on the scripted fallback).
+- **The live link, `https://<slug>.<base domain>`, first and prominently** (the user shows it to the client), then the admin URL and password and the private repo URL. Say that the DeepSeek key is on the server in `.env` (or that chat is on the scripted fallback).
 - Which images were generated rather than taken from the client's site.
 - What was carried over (pages, words, suburbs, services) and the verification results.
 - A **CONFIRM list**: every price, rate, licence, offer or claim that came from an ambiguous source or that you could not verify (for example conflicting prices on the old site, placeholder upgrade offers, an unlicensed trade).
 - What is not built: PayPal and Google Calendar sync (shown in Settings as "Not built yet"), and anything skipped.
+
+**Production is a separate, later step and is not part of the default flow.** The user will say when a site is ready to go to production and where it should live (they use Netlify). Do not push anything to Netlify before they say so. When they do, ask which Netlify account to use and how the backend should be handled: Netlify hosts static files and functions only, so the chat assistant, lead capture and admin need the Node API that runs on the server. Then act on their answer.
 
 When the client is ready to go live on their own domain, follow `docs/DEPLOY.md` (point the domain at the server, then redeploy with `--index`).
 

@@ -33,7 +33,7 @@ Keys are **never stored in this repo**. The skill asks you for them and writes t
 | `STRIPE_SECRET_KEY` | deposit payment links | optional |
 | `RESEND_API_KEY` | lead alerts and deposit emails | optional |
 | `OPENAI_API_KEY` | AI-generated photos when a site has none | optional (illustrations are used without it) |
-| `CLOUDFLARE_API_TOKEN` | auto-create the DNS record for `<slug>.<your domain>` | optional |
+| `CLOUDFLARE_API_TOKEN` | creates the `<slug>.<your domain>` subdomain on every deploy | needed for the subdomain step (store it via `setup-server.mjs --cloudflare-token`) |
 
 Server details (host, SSH key path, base domain) live in `~/.redesign-contractor/server.json` on your machine, created by `scripts/setup-server.mjs`. They are never part of this repo.
 

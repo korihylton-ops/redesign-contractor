@@ -152,7 +152,13 @@ log('  uploading...');
   const mk = spawnSync('tar', ['-czf', tgzName, ...excludes.flatMap((e) => ['--exclude', e]), '-C', proj, '.'], { encoding: 'utf8', timeout: 300000, cwd: os.tmpdir() });
   if (mk.status !== 0) fail('Could not create the upload archive: ' + (mk.stderr || mk.error));
   const scpArgs = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=accept-new', '-i', expand(S.keyPath), '-P', String(S.port || 22), tgzName, S.user + '@' + S.host + ':/tmp/' + slug + '.tgz'];
-  const cp = spawnSync('scp', scpArgs, { encoding: 'utf8', timeout: 600000, cwd: os.tmpdir() });
+  let cp;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    cp = spawnSync('scp', scpArgs, { encoding: 'utf8', timeout: 600000, cwd: os.tmpdir() });
+    if (cp.status === 0) break;
+    log('  upload attempt ' + attempt + ' failed (' + ((cp.stderr || '').trim().split(/\r?\n/)[0] || 'timeout') + '), retrying...');
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 6000 * attempt);
+  }
   fs.rmSync(tgz, { force: true });
   if (cp.status !== 0) fail('Upload failed: ' + (cp.stderr || cp.error));
   const ex = ssh('mkdir -p ' + remoteDir + ' && tar xzf /tmp/' + slug + '.tgz --no-same-owner -C ' + remoteDir + ' && rm -f /tmp/' + slug + '.tgz && echo extracted', 120000);
@@ -171,7 +177,7 @@ if (prettyHost && cfToken) {
     const ex = await (await fetch(`https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records?type=A&name=${prettyHost}`, { headers: H })).json();
     if (ex.result && ex.result.length) dnsNote = `DNS record for ${prettyHost} already exists.`;
     else {
-      const c = await (await fetch(`https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records`, { method: 'POST', headers: H, body: JSON.stringify({ type: 'A', name: prettyHost, content: ip, proxied: true, ttl: 1 }) })).json();
+      const c = await (await fetch(`https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records`, { method: 'POST', headers: H, body: JSON.stringify({ type: 'A', name: prettyHost, content: ip, proxied: false, ttl: 120 }) })).json();
       dnsNote = c.success ? `Created Cloudflare DNS record ${prettyHost} -> ${ip}.` : 'Cloudflare refused the DNS record: ' + JSON.stringify(c.errors);
     }
   } catch (e) { dnsNote = 'Cloudflare DNS step failed: ' + e.message; }
