@@ -11,13 +11,23 @@ const TEXT_NUMBER = () => process.env.TEXT_NUMBER || B.phoneE164;
 const smsHref = (body) => `sms:${TEXT_NUMBER()}?&body=${encodeURIComponent(body || T('Hi {{name}}, I would like a quote.'))}`;
 
 const fullAddress = [B.address.street, [B.address.suburb, B.address.state, B.address.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+const hasAddress = !!(B.address.street && B.address.suburb);
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress + ', ' + (B.address.country === 'AU' ? 'Australia' : B.address.country || ''))}`;
 const serviceOptions = C.formServices;
 const has = (p) => !!S.get(p);
 
-/* Tracked call / text buttons. Every one reports a conversion to /api/convert (see site.js). */
-const callBtn = (src, label, cls) => `<a class="btn ${cls || 'btn--call'}" href="${B.phoneHref}" data-track="call" data-src="${src}">${label || 'Call ' + esc(B.phone)}</a>`;
-const textBtn = (src, label, cls, body) => `<a class="btn ${cls || 'btn--line'}" href="${esc(smsHref(body))}" data-track="text" data-src="${src}">${label || 'Text us'}</a>`;
+/* Tracked call / text buttons. Every one reports a conversion to /api/convert (see site.js).
+   Not every business publishes a phone number (e.g. a professional-services agency that only takes
+   enquiries by email/form) — in that case "call" routes to email and "text" jumps to the enquiry form
+   instead of rendering a tel:/sms: link to a number that doesn't exist. Phone-specific labels ("Call now")
+   are meaningless without a phone line, so they're ignored in that case for a fixed, honest default. */
+const HAS_PHONE = !!B.phone;
+const callBtn = (src, label, cls) => HAS_PHONE
+  ? `<a class="btn ${cls || 'btn--call'}" href="${B.phoneHref}" data-track="call" data-src="${src}">${label || 'Call ' + esc(B.phone)}</a>`
+  : `<a class="btn ${cls || 'btn--call'}" href="mailto:${esc(B.email)}" data-track="call" data-src="${src}">Email us</a>`;
+const textBtn = (src, label, cls, body) => HAS_PHONE
+  ? `<a class="btn ${cls || 'btn--line'}" href="${esc(smsHref(body))}" data-track="text" data-src="${src}">${label || 'Text us'}</a>`
+  : `<a class="btn ${cls || 'btn--line'}" href="#quote" data-track="text" data-src="${src}">Get in touch</a>`;
 
 function head({ title, description, path, jsonld = [], image, type }) {
   const url = SITE() + path;
@@ -49,11 +59,16 @@ ${jsonld.map((j) => `<script type="application/ld+json">${JSON.stringify(j).repl
 </head>`;
 }
 
+/* True only if the section actually renders something: an empty config list still means a dead #anchor. */
+const hasReviews = () => { const home = S.get('/'); return C.reviews.length > 0 || (home && home.blocks.some((b) => b.type === 'review')); };
+const hasAreas = () => C.suburbs.length > 0;
+
 function navItems() {
   if (C.nav) return C.nav;
   const items = [['/#services', 'Services']];
   if (C.priceSheet.length) items.push(['/#pricing', 'Pricing']);
-  items.push(['/#reviews', 'Reviews'], ['/#areas', 'Areas']);
+  if (hasReviews()) items.push(['/#reviews', 'Reviews']);
+  if (hasAreas()) items.push(['/#areas', 'Areas']);
   if (S.posts.length) items.push(['/blog', 'Guides']);
   items.push([has('/contact') ? '/contact' : '/#quote', 'Contact']);
   return items;
@@ -76,7 +91,7 @@ function header() {
 }
 
 function chatWidget() {
-  return `<div class="chat" id="chat" data-phone="${esc(B.phone)}" data-phone-href="${B.phoneHref}" data-sms="${esc(smsHref(T('Hi {{name}}, I have a question.')))}" data-name="${esc(B.name)}">
+  return `<div class="chat" id="chat" data-phone="${esc(B.phone)}" data-email="${esc(B.email)}" data-phone-href="${HAS_PHONE ? B.phoneHref : 'mailto:' + esc(B.email)}" data-sms="${esc(HAS_PHONE ? smsHref(T('Hi {{name}}, I have a question.')) : '#quote')}" data-name="${esc(B.name)}">
   <button class="chat__launch" type="button" aria-expanded="false" aria-controls="chat-panel"><span class="chat__dot" aria-hidden="true"></span><span class="chat__launch-label">Chat with us</span></button>
   <section class="chat__panel" id="chat-panel" role="dialog" aria-label="Chat with ${esc(B.name)}" hidden>
     <header class="chat__head">
@@ -88,7 +103,7 @@ function chatWidget() {
     <div class="chat__chips"></div>
     <div class="chat__cta">${callBtn('chat', 'Call now', 'btn--call')}${textBtn('chat', 'Text us', 'btn--line')}</div>
     <form class="chat__form" autocomplete="off"><label class="sr" for="chat-input">Your message</label><input id="chat-input" maxlength="500" placeholder="Type your message"><button class="btn btn--ink" type="submit">Send</button></form>
-    <p class="chat__note">AI assistant. For urgent jobs, call ${esc(B.phone)}.</p>
+    <p class="chat__note">AI assistant. ${HAS_PHONE ? `For urgent jobs, call ${esc(B.phone)}.` : `For anything urgent, email ${esc(B.email)}.`}</p>
   </section>
 </div>`;
 }
@@ -102,25 +117,32 @@ function footer() {
   const areaLinks = C.regionPages.slice(0, 2).map((r) => `<li><a href="${C.paths.region(r.slug)}">${esc(r.name)}</a></li>`)
     .concat(C.suburbs.slice(0, 3).map((x) => `<li><a href="${C.paths.suburb(x.slug)}">${esc(x.name)}</a></li>`)).join('');
   const legalBits = [B.licenceLine, B.abn ? `${B.abnLabel} ${B.abn}` : ''].filter(Boolean).join('. ');
+  // Optional extra footer columns from config, for content a generic footer has no slot for
+  // (e.g. an agency's own portfolio links). config.copy.footerExtra: [{ heading, links: [[href, label]] }]
+  const extraCols = (C.copy.footerExtra || []).map((col) => `<div>
+        <h3>${esc(T(col.heading))}</h3>
+        <ul>${col.links.map(([href, label]) => `<li><a href="${esc(href)}"${/^https?:/.test(href) ? ' rel="noopener" target="_blank"' : ''}>${esc(T(label))}</a></li>`).join('')}</ul>
+      </div>`).join('');
   return `<footer class="foot">
   <div class="wrap">
     <div class="foot__grid">
       <div>
         <span class="foot__logo"><img src="${img(C.images.logo || 'logo.webp')}" alt="${esc(B.name)}" height="40"></span>
-        <p>${esc(B.legalName)}<br>${esc(fullAddress)}<br><a href="${B.phoneHref}" data-track="call" data-src="footer">${esc(B.phone)}</a><br><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></p>
+        <p>${esc(B.legalName)}${fullAddress ? '<br>' + esc(fullAddress) : ''}${HAS_PHONE ? `<br><a href="${B.phoneHref}" data-track="call" data-src="footer">${esc(B.phone)}</a>` : ''}<br><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></p>
       </div>
       <div>
         <h3>Services</h3>
         <ul>${C.services.map((x) => `<li><a href="/${x.slug}">${esc(x.name)}</a></li>`).join('')}</ul>
       </div>
-      <div>
+      ${company || areaLinks || hasAreas() ? `<div>
         <h3>Company</h3>
-        <ul>${company}${areaLinks}<li><a href="/#areas">All suburbs</a></li></ul>
-      </div>
-      <div>
+        <ul>${company}${areaLinks}${hasAreas() ? '<li><a href="/#areas">All suburbs</a></li>' : ''}</ul>
+      </div>` : ''}
+      ${social || hasAddress ? `<div>
         <h3>Follow</h3>
-        <ul>${social}<li><a href="${mapsUrl}" rel="noopener">Get directions</a></li></ul>
-      </div>
+        <ul>${social}${hasAddress ? `<li><a href="${mapsUrl}" rel="noopener">Get directions</a></li>` : ''}</ul>
+      </div>` : ''}
+      ${extraCols}
     </div>
     <div class="foot__legal">
       <span>${esc(legalBits)}</span>
@@ -137,7 +159,7 @@ ${chatWidget()}
 }
 
 function quoteForm({ suburb = '' } = {}) {
-  return `<form class="form js-lead" data-phone="${esc(B.phone)}" novalidate>
+  return `<form class="form js-lead" data-phone="${esc(B.phone)}" data-email="${esc(B.email)}" novalidate>
   <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" required maxlength="120"></div>
   <div class="field"><label for="f-phone">Phone</label><input id="f-phone" name="phone" type="tel" autocomplete="tel" required maxlength="40"></div>
   <div class="field"><label for="f-email">Email (optional)</label><input id="f-email" name="email" type="email" autocomplete="email" maxlength="200"></div>
@@ -158,10 +180,10 @@ function quoteSection({ suburb, heading, id } = {}) {
   <div class="wrap quote-grid">
     <div>
       <h2 style="color:#fff">${esc(T(heading || q.heading || 'Get a fixed-price quote'))}</h2>
-      <p class="lede">${esc(T(q.lede || 'Tell us what you need and we will call you back. If it cannot wait, call or text now.'))}</p>
+      <p class="lede">${esc(T(q.lede || (HAS_PHONE ? 'Tell us what you need and we will call you back. If it cannot wait, call or text now.' : 'Tell us what you need and we will get back to you.')))}</p>
       <div class="hero__cta" style="margin:20px 0 0">${callBtn('quote-section')}${textBtn('quote-section', 'Text us', 'btn--line')}</div>
       <ul class="contact-list">
-        <li><b>Phone</b><a href="${B.phoneHref}" data-track="call" data-src="quote-section">${esc(B.phone)}</a></li>
+        ${HAS_PHONE ? `<li><b>Phone</b><a href="${B.phoneHref}" data-track="call" data-src="quote-section">${esc(B.phone)}</a></li>` : ''}
         ${B.email ? `<li><b>Email</b><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></li>` : ''}
         ${fullAddress ? `<li><b>Workshop</b><a href="${mapsUrl}" rel="noopener">${esc(fullAddress)}</a></li>` : ''}
         ${B.hoursText ? `<li><b>Hours</b><span>${esc(B.hoursText)}</span></li>` : ''}

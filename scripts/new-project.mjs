@@ -19,6 +19,21 @@ const out = path.resolve(args.out);
 const cfgPath = path.resolve(args.config);
 const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
 
+/* Safety check: never silently overwrite a directory that already holds something else.
+   This exists because scaffolding once ran straight into a folder that turned out to be the git-tracked
+   source of a client's real, already-live site, copying the engine over it on disk. A directory only
+   counts as "already a redesign-contractor project" (safe to re-scaffold into, e.g. to sync an engine
+   update) if it has content/config.json; anything else non-empty is refused unless --force is passed. */
+if (fs.existsSync(out)) {
+  const entries = fs.readdirSync(out);
+  const isOwnProject = fs.existsSync(path.join(out, 'content', 'config.json'));
+  if (entries.length && !isOwnProject && !args.force) {
+    console.error(`Refusing to scaffold into ${out}: it already exists, is not empty, and does not look like a\nredesign-contractor project (no content/config.json). Contents include: ${entries.slice(0, 8).join(', ')}${entries.length > 8 ? ', ...' : ''}\n\nUse a new, empty directory for a new project, or pass --force only if you have personally verified\nthis directory has nothing in it worth keeping (check for an unrelated .git history first).`);
+    process.exit(1);
+  }
+  if (entries.length && !isOwnProject && args.force) console.warn(`--force: overwriting non-empty, non-project directory ${out}`);
+}
+
 function copyDir(src, dst, skip = []) {
   fs.mkdirSync(dst, { recursive: true });
   for (const e of fs.readdirSync(src, { withFileTypes: true })) {

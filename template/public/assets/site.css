@@ -230,16 +230,20 @@ p { margin: 0 0 1em; max-width: 68ch; }
 .link-list a:hover { color: var(--teal); }
 @media (max-width: 860px) { .inner-hero__grid, .two-col { grid-template-columns: 1fr; } }
 
-/* Footer */
-.foot { background: var(--ink); color: #b9ccd2; padding-block: 56px 96px; font-size: .97rem; }
-.foot__grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 32px; }
-.foot h3 { color: #fff; font-size: 1rem; margin-bottom: 12px; }
-.foot a { color: #b9ccd2; text-decoration: none; }
+/* Footer. Column count varies per business (a contractor has Areas/Follow; an agency with no address or
+   social might only have two columns) so the grid auto-fits rather than assuming exactly four. */
+.foot { position: relative; background: var(--ink); color: #b9ccd2; padding-block: 72px 96px; font-size: .97rem; }
+.foot::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--cyan), transparent 70%); }
+.foot__grid { display: grid; grid-template-columns: minmax(240px, 1.4fr) repeat(auto-fit, minmax(160px, 1fr)); gap: 32px 40px; }
+.foot h3 { color: #fff; font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
+.foot a { color: #b9ccd2; text-decoration: none; transition: color .15s; }
 .foot a:hover { color: #fff; text-decoration: underline; }
-.foot ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-.foot__logo { background: #fff; padding: 10px 14px; border-radius: 10px; display: inline-block; margin-bottom: 16px; }
+.foot ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; }
+.foot p { color: #9fb7bf; line-height: 1.6; }
+.foot__logo { background: #fff; padding: 10px 14px; border-radius: 10px; display: inline-block; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
 .foot__logo img { height: 40px; width: auto; }
-.foot__legal { margin-top: 40px; padding-top: 20px; border-top: 1px solid #244650; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: .88rem; }
+.foot__legal { margin-top: 48px; padding-top: 22px; border-top: 1px solid #24404a; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: .85rem; color: #7f98a0; }
+.foot__legal a { color: #a9c2c9; }
 @media (max-width: 860px) { .foot__grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .foot__grid { grid-template-columns: 1fr; } }
 

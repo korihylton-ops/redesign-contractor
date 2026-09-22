@@ -7,6 +7,8 @@
   var launch = $('.chat__launch'), panel = $('.chat__panel'), log = $('.chat__log'), chips = $('.chat__chips');
   var form = $('.chat__form'), input = $('.chat__form input'), closeBtn = $('.chat__close');
   var phone = root.getAttribute('data-phone');
+  var email = root.getAttribute('data-email');
+  var contactLine = phone ? phone : (email || 'the contact form');
   var M = function () { return window.Motion; };
 
   var sid;
@@ -60,7 +62,7 @@
   function greet() {
     if (greeted) return;
     greeted = true;
-    bubble('bot', 'Hi, I am the ' + NAME + ' assistant. Tell me what you need and I can get you a quote, answer questions, or pass your details to the team. For anything urgent, call ' + phone + '.');
+    bubble('bot', 'Hi, I am the ' + NAME + ' assistant. Tell me what you need and I can get you a quote, answer questions, or pass your details to the team. For anything urgent, contact us at ' + contactLine + '.');
     setChips(CHIPS);
     persist();
   }
@@ -95,7 +97,7 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         t.remove();
-        var reply = res.j.reply || res.j.error || 'Sorry, something went wrong. Please call or text ' + phone + '.';
+        var reply = res.j.reply || res.j.error || 'Sorry, something went wrong. Please contact us at ' + contactLine + '.';
         bubble('bot', reply);
         if (res.ok && res.j.reply) history.push({ role: 'assistant', content: res.j.reply });
         if (res.j.state) state = res.j.state;
@@ -103,7 +105,7 @@
         if (res.j.offer) offerCard(res.j.offer);
         persist();
       })
-      .catch(function () { t.remove(); bubble('bot', 'Sorry, I could not send that. Please call or text ' + phone + '.'); })
+      .catch(function () { t.remove(); bubble('bot', 'Sorry, I could not send that. Please contact us at ' + contactLine + '.'); })
       .finally(function () { busy = false; log.scrollTop = log.scrollHeight; });
   }
 

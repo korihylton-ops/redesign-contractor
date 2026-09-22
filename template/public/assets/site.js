@@ -238,11 +238,15 @@
           if (!res.ok) throw new Error((res.j && res.j.error) || 'Something went wrong.');
           form.reset();
           status.className = 'form__status is-ok';
-          status.textContent = 'Thanks. We have your request and will call you back shortly. For an emergency, call ' + (form.getAttribute('data-phone') || '') + ' now.';
+          var phone = form.getAttribute('data-phone'), email = form.getAttribute('data-email');
+          status.textContent = phone
+            ? 'Thanks. We have your request and will call you back shortly. For an emergency, call ' + phone + ' now.'
+            : 'Thanks. We have your request and will be in touch shortly.' + (email ? ' You can also reach us at ' + email + '.' : '');
         })
         .catch(function (err) {
           status.className = 'form__status is-err';
-          status.textContent = err.message + ' You can also call ' + (form.getAttribute('data-phone') || 'us') + ' directly.';
+          var phone = form.getAttribute('data-phone'), email = form.getAttribute('data-email');
+          status.textContent = err.message + (phone ? ' You can also call ' + phone + ' directly.' : email ? ' You can also email ' + email + '.' : '');
         })
         .finally(function () { btn.disabled = false; btn.textContent = 'Send quote request'; });
     });

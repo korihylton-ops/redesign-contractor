@@ -1,0 +1,5 @@
+# Shell scripts run inside a Linux container. A Windows checkout with core.autocrlf=true will otherwise
+# convert their line endings to CRLF, which breaks the #!/bin/sh shebang ("exec: no such file or directory")
+# and silently fails the container at startup. Force LF regardless of the checking-out machine's git config.
+*.sh text eol=lf
+Dockerfile text eol=lf
