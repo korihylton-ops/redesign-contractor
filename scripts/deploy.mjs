@@ -163,6 +163,11 @@ log('  uploading...');
   if (cp.status !== 0) fail('Upload failed: ' + (cp.stderr || cp.error));
   const ex = ssh('mkdir -p ' + remoteDir + ' && tar xzf /tmp/' + slug + '.tgz --no-same-owner -C ' + remoteDir + ' && rm -f /tmp/' + slug + '.tgz && echo extracted', 120000);
   if (!/extracted/.test(ex.stdout || '')) fail('Remote extract failed: ' + (ex.stderr || ex.stdout));
+  // The container writes data/ as uid 1000 (the "node" user in node:20-alpine). The bind-mounted host
+  // folder is created by this tar extraction (root over SSH), so without this it stays root-owned and
+  // every write (leads, chats, conversions) throws EACCES and crashes the app in a restart loop.
+  const own = ssh('mkdir -p ' + remoteDir + '/data && chown -R 1000:1000 ' + remoteDir + '/data', 20000);
+  if (own.status !== 0) fail('Could not set ownership on ' + remoteDir + '/data: ' + (own.stderr || own.stdout));
 }
 
 /* ---------- 4. optional Cloudflare DNS for the pretty hostname ---------- */
