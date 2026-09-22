@@ -102,9 +102,14 @@ Fix every FAIL. When the source is thin, add pages to `<project>/content/site/ge
 node scripts/verify-text.mjs <project>            # must pass at 99.9%
 cd <project> && npm start                          # http://localhost:3000
 node scripts/qa.mjs <project> --url http://localhost:3000
+node scripts/click-audit.mjs --url http://localhost:3000   # must end 0 FAILED
 ```
 
+`qa.mjs` proves the machinery works. `click-audit.mjs` proves every button a visitor can see actually does something a visitor can see: it clicks every anchor and button on every page in the sitemap and judges the result, not the markup. It fails an in-page anchor whose target does not exist, an internal link that lands on a 404, and — deliberately — any prominent `.btn` whose href is `mailto:`, because on a device with no mail client that button produces no navigation, no error and no feedback at all, which is exactly how a dead button looks. Never report a site as working on the strength of a link existing, a 200 status or an href that parses; run this and read the summary.
+
 Open the screenshots in `<project>/qa-shots/` and check them yourself: hero, services selector, bento, reviews, a suburb page, an article, the chat, the admin. Fix anything broken before reporting. If something fails, diagnose the cause before changing code.
+
+After deploying (Phase 9), run `node scripts/click-audit.mjs --url https://<the live host>` as well. Local passing does not prove the deployed build is the one you fixed.
 
 ## Phase 9: Deploy (private repo, then the Contabo server)
 

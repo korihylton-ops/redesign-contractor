@@ -11,6 +11,11 @@ const TEXT_NUMBER = () => process.env.TEXT_NUMBER || B.phoneE164;
 const smsHref = (body) => `sms:${TEXT_NUMBER()}?&body=${encodeURIComponent(body || T('Hi {{name}}, I would like a quote.'))}`;
 
 const fullAddress = [B.address.street, [B.address.suburb, B.address.state, B.address.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+/* A directions link and a printed address are only honest when there is a real street address.
+   A config carrying just a country or a state ('Australia') still makes fullAddress truthy, which
+   used to render a "Workshop" entry linking to a Google Maps query for "Australia, Australia" —
+   a link that returns HTTP 200 and is therefore invisible to any status-code check, while being
+   plainly broken to the person who clicks it. Gate every address affordance on hasAddress. */
 const hasAddress = !!(B.address.street && B.address.suburb);
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress + ', ' + (B.address.country === 'AU' ? 'Australia' : B.address.country || ''))}`;
 const serviceOptions = C.formServices;
@@ -18,16 +23,22 @@ const has = (p) => !!S.get(p);
 
 /* Tracked call / text buttons. Every one reports a conversion to /api/convert (see site.js).
    Not every business publishes a phone number (e.g. a professional-services agency that only takes
-   enquiries by email/form) — in that case "call" routes to email and "text" jumps to the enquiry form
-   instead of rendering a tel:/sms: link to a number that doesn't exist. Phone-specific labels ("Call now")
-   are meaningless without a phone line, so they're ignored in that case for a fixed, honest default. */
+   enquiries by email/form). A prominent "Email us" BUTTON that resolves to mailto: looks broken to a
+   real visitor: on any device with no default mail client configured (common — many browsers, most
+   work computers, headless test environments), clicking it produces zero visible feedback, not even
+   an error. So both buttons route to the on-page enquiry form, which always works with no external
+   app dependency. The actual email address stays visible and clickable as plain text elsewhere (the
+   footer, the contact list) — reading and manually copying a visible address degrades acceptably in
+   the same no-mail-client case; a button whose only content is a generic label and a hidden href does
+   not. Phone-specific labels ("Call now") are meaningless without a phone line, so they're ignored in
+   that case for a fixed, honest default. */
 const HAS_PHONE = !!B.phone;
 const callBtn = (src, label, cls) => HAS_PHONE
   ? `<a class="btn ${cls || 'btn--call'}" href="${B.phoneHref}" data-track="call" data-src="${src}">${label || 'Call ' + esc(B.phone)}</a>`
-  : `<a class="btn ${cls || 'btn--call'}" href="mailto:${esc(B.email)}" data-track="call" data-src="${src}">Email us</a>`;
+  : `<a class="btn ${cls || 'btn--call'}" href="#quote" data-track="quote" data-src="${src}">Get a quote</a>`;
 const textBtn = (src, label, cls, body) => HAS_PHONE
   ? `<a class="btn ${cls || 'btn--line'}" href="${esc(smsHref(body))}" data-track="text" data-src="${src}">${label || 'Text us'}</a>`
-  : `<a class="btn ${cls || 'btn--line'}" href="#quote" data-track="text" data-src="${src}">Get in touch</a>`;
+  : `<a class="btn ${cls || 'btn--line'}" href="#quote" data-track="quote" data-src="${src}">Get in touch</a>`;
 
 function head({ title, description, path, jsonld = [], image, type }) {
   const url = SITE() + path;
@@ -91,7 +102,7 @@ function header() {
 }
 
 function chatWidget() {
-  return `<div class="chat" id="chat" data-phone="${esc(B.phone)}" data-email="${esc(B.email)}" data-phone-href="${HAS_PHONE ? B.phoneHref : 'mailto:' + esc(B.email)}" data-sms="${esc(HAS_PHONE ? smsHref(T('Hi {{name}}, I have a question.')) : '#quote')}" data-name="${esc(B.name)}">
+  return `<div class="chat" id="chat" data-phone="${esc(B.phone)}" data-email="${esc(B.email)}" data-name="${esc(B.name)}">
   <button class="chat__launch" type="button" aria-expanded="false" aria-controls="chat-panel"><span class="chat__dot" aria-hidden="true"></span><span class="chat__launch-label">Chat with us</span></button>
   <section class="chat__panel" id="chat-panel" role="dialog" aria-label="Chat with ${esc(B.name)}" hidden>
     <header class="chat__head">
@@ -128,7 +139,7 @@ function footer() {
     <div class="foot__grid">
       <div>
         <span class="foot__logo"><img src="${img(C.images.logo || 'logo.webp')}" alt="${esc(B.name)}" height="40"></span>
-        <p>${esc(B.legalName)}${fullAddress ? '<br>' + esc(fullAddress) : ''}${HAS_PHONE ? `<br><a href="${B.phoneHref}" data-track="call" data-src="footer">${esc(B.phone)}</a>` : ''}<br><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></p>
+        <p>${esc(B.legalName)}${hasAddress ? '<br>' + esc(fullAddress) : ''}${HAS_PHONE ? `<br><a href="${B.phoneHref}" data-track="call" data-src="footer">${esc(B.phone)}</a>` : ''}<br><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></p>
       </div>
       <div>
         <h3>Services</h3>
@@ -185,7 +196,7 @@ function quoteSection({ suburb, heading, id } = {}) {
       <ul class="contact-list">
         ${HAS_PHONE ? `<li><b>Phone</b><a href="${B.phoneHref}" data-track="call" data-src="quote-section">${esc(B.phone)}</a></li>` : ''}
         ${B.email ? `<li><b>Email</b><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></li>` : ''}
-        ${fullAddress ? `<li><b>Workshop</b><a href="${mapsUrl}" rel="noopener">${esc(fullAddress)}</a></li>` : ''}
+        ${hasAddress ? `<li><b>Workshop</b><a href="${mapsUrl}" rel="noopener">${esc(fullAddress)}</a></li>` : ''}
         ${B.hoursText ? `<li><b>Hours</b><span>${esc(B.hoursText)}</span></li>` : ''}
       </ul>
     </div>
@@ -203,10 +214,11 @@ function localBusinessLd(extra = {}) {
     '@context': 'https://schema.org', '@type': [trade.schemaType, 'LocalBusiness'], '@id': SITE() + '/#business',
     name: B.name, legalName: B.legalName, url: SITE(), telephone: B.phoneE164, email: B.email,
     image: SITE() + img(C.images.og || C.images.hero), logo: SITE() + img(C.images.logo || 'logo.webp'), priceRange: '$$',
-    address: { '@type': 'PostalAddress', streetAddress: B.address.street, addressLocality: B.address.suburb, addressRegion: B.address.state, postalCode: B.address.postcode, addressCountry: B.address.country || 'AU' },
     areaServed: C.suburbs.map((s) => ({ '@type': 'City', name: s.name })),
     sameAs: Object.values(B.social || {}).filter(Boolean)
   };
+  // An empty PostalAddress is noise to search engines, so only publish one when it is real.
+  if (hasAddress) ld.address = { '@type': 'PostalAddress', streetAddress: B.address.street, addressLocality: B.address.suburb, addressRegion: B.address.state, postalCode: B.address.postcode, addressCountry: B.address.country || 'AU' };
   if (B.open247) ld.openingHoursSpecification = [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '00:00', closes: '23:59' }];
   if (B.rating && B.reviewCount) ld.aggregateRating = { '@type': 'AggregateRating', ratingValue: String(B.rating), reviewCount: String(B.reviewCount) };
   if ((B.licences || []).length) ld.hasCredential = B.licences.map((l) => `${l.label} ${l.number}`);

@@ -60,9 +60,16 @@ ok('chat opens with greeting and chips', (await p.locator('.msg--bot').count()) 
 await p.locator('.chat__chips button').nth(1).click();
 await p.waitForFunction(() => document.querySelectorAll('.msg--bot:not(.msg--typing)').length >= 2, null, { timeout: 45000 }).catch(() => {});
 ok('chat replies', (await p.locator('.msg--bot:not(.msg--typing)').count()) >= 2);
-await p.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href^="tel:"],a[href^="sms:"]')) e.preventDefault(); }));
-await p.locator('.chat__cta a[href^="tel:"]').click(); await p.locator('.chat__cta a[href^="sms:"]').click();
-await p.click('.chat__close'); await p.locator('.head__call').click(); await p.waitForTimeout(800);
+// The chat CTAs are tel:/sms: for a business with a phone line and #quote jumps for one without,
+// so click whatever is actually rendered rather than assuming a phone exists (that assumption used
+// to hang for 30s and crash QA on email-only businesses).
+await p.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href^="tel:"],a[href^="sms:"],a[href^="mailto:"]')) e.preventDefault(); }));
+const chatCtas = await p.locator('.chat__cta a').all();
+ok('chat panel offers at least one CTA', chatCtas.length > 0);
+for (const c of chatCtas) await c.click().catch(() => {});
+await p.click('.chat__close');
+// .head__call is the header CTA whatever it resolves to (call, or a jump to the enquiry form).
+await p.locator('.head__call').click(); await p.waitForTimeout(800);
 
 // admin
 const a = await ctx.newPage();

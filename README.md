@@ -56,6 +56,7 @@ cd scripts && npm install && npx playwright install chromium && cd ..
 node scripts/new-project.mjs --out ../demo --config examples/starter/config.json --images examples/starter/images --install
 cd ../demo && npm start        # http://localhost:3000 , admin at /admin.html (password printed above)
 node ../redesign-contractor/scripts/qa.mjs ../demo
+node ../redesign-contractor/scripts/click-audit.mjs --url http://localhost:3000
 ```
 The starter deliberately fails the volume floors (`validate-config.mjs`): it has no scraped long-form text, which is exactly what the skill adds for a real client.
 
