@@ -19,7 +19,7 @@ const norm = (s) => s.replace(/\s+/g, ' ').trim();
 const BLOCK = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'blockquote', 'dt', 'dd', 'figcaption']);
 const STRUCT = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,dt,dd,figcaption,table,div,ul,ol,section,article';
 const SKIP = new Set(['script', 'style', 'noscript', 'svg', 'form', 'select', 'option', 'input', 'textarea', 'iframe', 'img', 'button']);
-const CHROME = /^(posted on google|excellent|based on \d+ reviews|read more|learn more|submit)$/i;
+const CHROME = /^(posted on google|excellent|based on \d+ reviews|read more|learn more|submit|button)$/i; // "button": site-builder label text (Duda, Wix) that renders as stray words
 const esc = (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]);
 
 function localHref(h) {
@@ -30,21 +30,24 @@ function localHref(h) {
   return null;
 }
 
-function inline($, el) {
+// Only the outermost call trims. Trimming nested spans too drops the space in markup like
+// `including</span> </span><a>logbook servicing</a>` and glues words to links ("includinglogbook").
+function inline($, el, nested = false) {
   let out = '';
   $(el).contents().each((_, n) => {
     if (n.type === 'text') out += n.data.replace(/[&<>"]/g, esc);
     else if (n.type === 'tag') {
       const t = n.name.toLowerCase();
       if (SKIP.has(t)) return;
-      const inner = inline($, n);
+      const inner = inline($, n, true);
       if (t === 'a') { const h = localHref($(n).attr('href')); out += h ? `<a href="${h.replace(/"/g, '&quot;')}">${inner}</a>` : inner; }
       else if (t === 'strong' || t === 'b') out += inner.trim() ? `<strong>${inner}</strong>` : inner;
       else if (t === 'em' || t === 'i') out += inner.trim() ? `<em>${inner}</em>` : inner;
       else out += (t === 'br' ? ' ' : inner);
     }
   });
-  return out.replace(/\s+/g, ' ').trim();
+  const collapsed = out.replace(/\s+/g, ' ');
+  return nested ? collapsed : collapsed.trim();
 }
 
 function extract(html) {

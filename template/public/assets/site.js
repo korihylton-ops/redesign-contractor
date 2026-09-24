@@ -27,6 +27,96 @@
     beacon('/api/convert', { type: type, source: src, sid: sid, page: location.pathname });
   }, true);
 
+  /* Call and text buttons on a desktop. tel:/sms: dial straight away on a phone, but on a computer
+     with no phone app the click does nothing visible, which looks like a dead button. So on devices
+     without a touch screen we also show the number in a small panel with a copy button. The link
+     still fires, so a desktop with a calling app (Phone Link, Skype, FaceTime) opens it as normal. */
+  var coarse = window.matchMedia('(pointer: coarse)').matches;
+  var toast;
+  function showNumber(kind, number) {
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.className = 'num-toast';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('data-num-toast', '');
+      toast.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2147483000;background:var(--ink,#0f1f38);color:#fff;padding:14px 16px 14px 20px;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.28);display:flex;gap:14px;align-items:center;font:500 15px/1.35 var(--font-body,system-ui,sans-serif);max-width:calc(100vw - 32px)';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = '';
+    var msg = document.createElement('span');
+    msg.textContent = (kind === 'text' ? 'Text us on ' : 'Call us on ') + number;
+    var copy = document.createElement('button');
+    copy.type = 'button';
+    copy.textContent = 'Copy number';
+    copy.style.cssText = 'border:0;border-radius:10px;padding:9px 14px;background:#fff;color:var(--ink,#0f1f38);font:600 14px var(--font-body,system-ui,sans-serif);cursor:pointer';
+    copy.addEventListener('click', function () {
+      var done = function () { copy.textContent = 'Copied'; };
+      try { navigator.clipboard.writeText(number).then(done, done); } catch (e) { done(); }
+    });
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.textContent = '×';
+    close.style.cssText = 'border:0;background:transparent;color:#fff;font-size:22px;line-height:1;cursor:pointer;padding:0 4px';
+    close.addEventListener('click', function () { toast.hidden = true; });
+    toast.appendChild(msg); toast.appendChild(copy); toast.appendChild(close);
+    toast.hidden = false;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { toast.hidden = true; }, 12000);
+  }
+  document.addEventListener('click', function (e) {
+    if (coarse) return;
+    var a = e.target.closest && e.target.closest('a[href^="tel:"], a[href^="sms:"]');
+    if (!a) return;
+    var sms = /^sms:/i.test(a.getAttribute('href'));
+    var chat = document.getElementById('chat');
+    var shown = (a.textContent.match(/[+()0-9][0-9 ()+-]{6,}/) || [])[0];
+    var fromHref = a.getAttribute('href').replace(/^(tel|sms):/i, '').split('?')[0];
+    // A text number can differ from the main line, so texts always use the number in the link.
+    var number = (sms ? ((chat && chat.getAttribute('data-text')) || fromHref) : (shown || (chat && chat.getAttribute('data-phone')) || fromHref)).trim();
+    showNumber(sms ? 'text' : 'call', number);
+  });
+
+  /* In-page links (#quote, /#pricing). Lazy images and reveal animations grow the page while a
+     smooth scroll is in flight, so the browser lands where the target used to be, often thousands
+     of pixels short on a fresh load, and can sit there. Waiting for the scroll to "settle" is not
+     reliable (it can pause mid-way while images load), so re-check the target on a fixed schedule
+     for about five seconds and re-aim whenever it has drifted. Any scrolling by the visitor
+     (wheel, touch, keys) cancels the correction immediately. */
+  var aimRun = 0;
+  ['wheel', 'touchstart', 'keydown'].forEach(function (ev) { window.addEventListener(ev, function () { aimRun++; }, { passive: true }); });
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest && e.target.closest('a[href*="#"]');
+    if (!a) return;
+    var url;
+    try { url = new URL(a.getAttribute('href'), location.href); } catch (err) { return; }
+    if (url.origin !== location.origin || url.pathname !== location.pathname || url.hash.length < 2) return;
+    var target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
+    if (!target) return;
+    e.preventDefault();
+    try { history.pushState(null, '', url.hash); } catch (err) { /* ignore */ }
+    var run = ++aimRun;
+    target.scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'start' });
+    // Every 150ms for 5s, work out where the target is now. If it has moved since the scroll was aimed,
+    // re-aim immediately (mid-flight, so the glide never heads for a stale spot); if the scroll has
+    // stopped short, finish it. 'instant' is explicit because 'auto' defers to the stylesheet's
+    // scroll-behavior: smooth and would glide again.
+    var dest = function () { return window.scrollY + target.getBoundingClientRect().top - (parseFloat(getComputedStyle(target).scrollMarginTop) || 0); };
+    var aimed = dest(), lastY = window.scrollY, elapsed = 0;
+    var tick = setInterval(function () {
+      elapsed += 150;
+      if (run !== aimRun || elapsed > 5000) { clearInterval(tick); return; } // the visitor took over
+      var y = window.scrollY, moving = Math.abs(y - lastY) > 1, now = dest();
+      lastY = y;
+      var maxY = document.documentElement.scrollHeight - window.innerHeight;
+      var goal = Math.min(now, maxY);
+      if (Math.abs(goal - y) <= 24) return; // arrived
+      if (Math.abs(now - aimed) > 24) { aimed = now; target.scrollIntoView({ behavior: reduced || elapsed > 1200 ? 'instant' : 'smooth', block: 'start' }); return; }
+      if (!moving) target.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }, 150);
+  });
+
   /* Page-view tracking for the admin Traffic tab */
   beacon('/api/track', { path: location.pathname, ref: document.referrer || '', sid: sid });
 

@@ -7,11 +7,12 @@
    actually *does something they can see*. This script clicks every anchor and button on every page
    and judges the result the way a person would.
 
-   The rule that motivated it: a prominent .btn whose href is mailto:/tel:/sms: is reported as a
-   FAILURE, not a pass. On any device with no mail or phone app registered — most desktops, every
-   headless browser — such a button produces no navigation, no error and no visible feedback, which
-   is indistinguishable from a dead button. Bare inline contact text is fine, because the address
-   itself is readable and copyable even when the handoff silently does nothing. */
+   The rule that motivated it: on any device with no mail or phone app registered (most desktops,
+   every headless browser) a mailto:/tel:/sms: button produces no navigation, no error and no visible
+   feedback, which is indistinguishable from a dead button. So a prominent mailto: .btn always FAILS.
+   A tel:/sms: .btn is clicked for real and passes only if the page then shows the visitor the number
+   (the engine's desktop number panel); otherwise it FAILS too. Bare inline contact text is fine,
+   because the address itself is readable and copyable even when the handoff silently does nothing. */
 import { chromium } from 'playwright';
 
 const argv = process.argv.slice(2);
@@ -24,6 +25,7 @@ const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
 const p = await ctx.newPage();
 
 const results = [];
+const manual = [];
 let events = [];
 p.on('popup', (pg) => events.push('POPUP:' + pg.url()));
 p.on('dialog', async (d) => { events.push('DIALOG:' + d.message()); await d.dismiss(); });
@@ -53,14 +55,19 @@ async function go(path) {
 async function clickAudited(idx) {
   const loc = p.locator(`[data-audit="${idx}"]`);
   await loc.scrollIntoViewIfNeeded().catch(() => {});
-  try { await loc.click({ timeout: 4000 }); return ''; }
+  try { await loc.click({ timeout: 1500 }); return ''; }
   catch {
     try { await loc.click({ timeout: 4000, force: true }); return ' (forced click: element animating)'; }
     catch { await loc.focus(); await p.keyboard.press('Enter'); return ' (keyboard activation: off-screen skip link)'; }
   }
 }
 
+/* Each navigation destination is clicked for real once per page (and header/footer links once per
+   site). Repeats of the same href, such as the two copies of a suburb marquee, inherit that result.
+   A full sweep otherwise reloads the page hundreds of times for identical links and takes hours. */
+const siteWide = new Map();
 for (const path of PAGES) {
+  const seen = new Map();
   console.log(`\n\n########## PAGE ${path} ##########`);
   await go(path);
   const items = await p.$$eval('a[href], button', (els) => els.map((e) => ({
@@ -70,17 +77,33 @@ for (const path of PAGES) {
     href: e.getAttribute('href'),
     isBtn: /\bbtn\b/.test(e.className || ''),
     visible: !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length),
+    inChrome: !!e.closest('header, footer, .head, .foot'),
   })));
   console.log(`(${items.length} clickable elements)`);
 
   for (const it of items) {
     const label = `${path} ${it.tag}"${it.text || '(no text)'}"${it.href ? ' -> ' + it.href : ''}`;
+    if (it.tag === 'a' && it.href && !it.href.startsWith('#') && !/^(tel:|sms:|mailto:)/.test(it.href)) {
+      const prev = seen.has(it.href) ? seen.get(it.href) : it.inChrome && siteWide.has(it.href) ? siteWide.get(it.href) : null;
+      if (prev !== null) { const r = results[prev]; log(label, !!(r && r.ok), 'same destination as an earlier real click' + (r && !r.ok ? ' (which FAILED)' : '')); continue; }
+      seen.set(it.href, results.length);
+      if (it.inChrome) siteWide.set(it.href, results.length);
+    }
     // Any previous click may have navigated away, and every check below reads this page's DOM.
     await go(path);
 
     if (it.href && /^(mailto:|tel:|sms:)/.test(it.href)) {
-      if (it.isBtn) log(label, false, 'PROMINENT BUTTON using an external-app scheme — shows nothing on a device with no mail/phone app');
-      else log(label, true, 'inline scheme link on readable text (acceptable)');
+      if (!it.isBtn) { log(label, true, 'inline scheme link on readable text (acceptable)'); continue; }
+      if (/^mailto:/.test(it.href)) { log(label, false, 'PROMINENT BUTTON using mailto: — shows nothing on a device with no mail client'); continue; }
+      // tel:/sms: dial on a phone. On a desktop with no phone app they only count as working if the
+      // page itself shows the visitor something (the engine's number panel). Click it for real,
+      // with the external navigation blocked, and judge what appears on screen.
+      if (!it.visible) { log(label, true, 'phone scheme, hidden in default state'); continue; }
+      await p.evaluate(() => document.addEventListener('click', (e) => { if (e.target.closest('a[href^="tel:"],a[href^="sms:"]')) e.preventDefault(); }));
+      try { await clickAudited(it.idx); await p.waitForTimeout(500); }
+      catch (e) { log(label, false, 'CLICK THREW: ' + e.message.split('\n')[0]); continue; }
+      const shown = await p.evaluate(() => { const t = document.querySelector('[data-num-toast]'); return !!(t && !t.hidden && t.offsetHeight && /\d{3}/.test(t.textContent)); });
+      log(label, shown, shown ? 'dials on a phone; on desktop shows the number with a copy button' : 'PROMINENT phone BUTTON with no visible result on a desktop without a phone app');
       continue;
     }
 
@@ -92,7 +115,20 @@ for (const path of PAGES) {
       events = [];
       const beforeY = await p.evaluate(() => window.scrollY);
       let note = '';
-      try { note = await clickAudited(it.idx); await p.waitForTimeout(1200); }
+      try {
+        note = await clickAudited(it.idx);
+        // Wait for the scroll to finish (it can be long on a big page), not a fixed guess: judge where
+        // the visitor ends up, which is also what exposes a scroll that stops short and stays there.
+        await p.waitForTimeout(400);
+        // Sample, wait, compare in Node: a Promise returned to waitForFunction is not reliably awaited,
+        // which made this judge mid-glide. Settled = no movement across 700ms, capped at 10s.
+        for (let waited = 0, y = await p.evaluate(() => window.scrollY); waited < 10000; waited += 700) {
+          await p.waitForTimeout(700);
+          const y2 = await p.evaluate(() => window.scrollY);
+          if (Math.abs(y2 - y) < 1) break;
+          y = y2;
+        }
+      }
       catch (e) { log(label, false, 'CLICK THREW: ' + e.message.split('\n')[0]); continue; }
       // What a visitor judges: is the thing I clicked towards now on screen? Not an exact scroll
       // number — a sticky header plus scroll-margin-top legitimately stops short of the raw offset.
@@ -113,7 +149,16 @@ for (const path of PAGES) {
         continue;
       }
       const res = await ctx.request.get(it.href, { timeout: 20000 }).catch((e) => ({ err: e.message }));
-      log(label, !!(res && res.ok && res.ok()), res && res.status ? 'status=' + res.status() : 'unreachable: ' + (res && res.err));
+      // Facebook, Instagram, LinkedIn and TikTok answer 400/403/429 to every automated request, real
+      // page or not, so the status code proves nothing either way. Don't call these dead or working:
+      // list them under CHECK BY HAND so a person opens each one once in a real browser.
+      const st = res && res.status ? res.status() : 0;
+      if (/(^|\.)(facebook|instagram|linkedin|tiktok)\.com$/i.test(new URL(it.href).hostname) && [400, 403, 429, 999].includes(st)) {
+        if (!manual.includes(it.href)) manual.push(it.href);
+        log(label, true, `status=${st}: social network refuses automated browsers; listed under CHECK BY HAND`);
+        continue;
+      }
+      log(label, !!(res && res.ok && res.ok()), st ? 'status=' + st : 'unreachable: ' + (res && res.err));
       continue;
     }
 
@@ -195,6 +240,7 @@ try {
 console.log('\n\n===== SUMMARY =====');
 const fails = results.filter((r) => !r.ok);
 console.log(`${results.length} interactions, ${results.length - fails.length} passed, ${fails.length} FAILED`);
+if (manual.length) { console.log('\nCHECK BY HAND (open each once in a real browser; automated requests are blocked):'); manual.forEach((u) => console.log('  - ' + u)); }
 if (fails.length) { console.log('\nFAILURES:'); fails.forEach((f) => console.log('  -', f.name, '\n      ', f.detail)); }
 
 await browser.close();

@@ -83,7 +83,10 @@ ok('admin shows the form lead', (await a.locator('.row', { hasText: 'QA Tester' 
 for (const tab of ['chats', 'calendar', 'traffic', 'settings']) { await a.click(`[data-tab=${tab}]`); await a.waitForTimeout(700); }
 await a.screenshot({ path: path.join(shots, 'admin-settings.png'), fullPage: true });
 const cv = await get('/api/conversions?days=30');
-ok('conversions recorded: call, text, chat_open, form_lead', (cv.totals.call || 0) >= 2 && (cv.totals.text || 0) >= 1 && cv.totals.chat_open >= 1 && cv.totals.form_lead >= 1, JSON.stringify(cv.totals));
+// A text conversion only exists when the business has a number that can receive SMS (a mobile, or
+// business.textNumber). With a landline, the text buttons become enquiry-form jumps (tracked as quote).
+const canText = chatCtas.length ? (await Promise.all(chatCtas.map((c) => c.getAttribute('href')))).some((h) => /^sms:/.test(h || '')) : false;
+ok(`conversions recorded: call, ${canText ? 'text' : 'quote'}, chat_open, form_lead`, (cv.totals.call || 0) >= 2 && (canText ? (cv.totals.text || 0) >= 1 : (cv.totals.quote || 0) >= 1) && cv.totals.chat_open >= 1 && cv.totals.form_lead >= 1, JSON.stringify(cv.totals));
 ok('admin has no page errors', errs.length === 0, errs.join(' | ').slice(0, 200));
 
 // mobile

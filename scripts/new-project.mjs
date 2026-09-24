@@ -72,7 +72,7 @@ const env = [
 ].join('\n');
 fs.writeFileSync(path.join(out, '.env'), env);
 fs.writeFileSync(path.join(out, '.admin-password.txt'), password + '\n');
-fs.writeFileSync(path.join(out, '.gitignore'), 'node_modules/\n.env\n.admin-password.txt\ndata/*.json\n*.log\nqa-shots/\n');
+fs.writeFileSync(path.join(out, '.gitignore'), 'node_modules/\n.env\n.admin-password.txt\ndata/*.json\n*.log\nqa-shots/\n_scrape/\n_gen/\n');
 fs.writeFileSync(path.join(out, '.env.example'), env.split('\n').map((l) => (/^(ADMIN_PASSWORD_HASH|SESSION_SECRET|DEEPSEEK_API_KEY|STRIPE_SECRET_KEY|RESEND_API_KEY)=/.test(l) ? l.split('=')[0] + '=' : l)).join('\n'));
 
 if (args.install) { console.log('npm install ...'); execSync('npm install --omit=dev', { cwd: out, stdio: 'inherit' }); }
