@@ -5,7 +5,7 @@ description: Rebuild a contractor's website (electrician, plumber, HVAC, roofer,
 
 # /redesign-contractor <url>
 
-Turn an existing contractor website into the same premium site every time: light, branded, animated, with a working lead backend and AI chat, covering every suburb and service. The engine is fixed (`template/`). What changes per client is one file, `content/config.json`, plus the client's scraped text and photos.
+Turn an existing contractor website into a premium site: branded, animated, with a working lead backend and AI chat, covering every suburb and service. The engine is fixed (`template/`). What changes per client is one file, `content/config.json`, plus the client's scraped text and photos. The look is one of six themes (`classic`, `floodlit`, `harbour`, `amber`, `slate`, `studio`), chosen per client in Phase 3 to fit their brand, photos and trade, so clients do not all get the same design.
 
 **SKILL_DIR** is the folder containing this file. All script paths below are relative to it.
 
@@ -56,8 +56,9 @@ node scripts/brand.mjs <url> --out <work>/_scrape          # brand.json, logo, o
 node scripts/photos.mjs collect --in <work>/_scrape --out <work>/_scrape
 ```
 
-- Look at `original-home.png` and `brand.json`. Choose `primary` (the client's real action colour), `ink` (a dark that suits it; avoid pure black), `surface` (near-white), and Google Fonts that fit the trade. The engine derives accessible text colours automatically.
-- View every `contact-sheet-N.png` with the Read tool. Pick real job photos: a sharp hero over 100KB, an about/team photo, a wide feature photo, at least 12 gallery photos and one photo per featured service. **Reject** photos with baked-in text, marketing graphics, stock imagery, screenshots and blurry shots.
+- Look at `original-home.png` and `brand.json`. Choose `primary` (the client's real action colour), `ink` (a dark that suits it; avoid pure black), `surface` (near-white) and `hazard` (the brand's bright accent, if it has one). The engine derives accessible text colours automatically.
+- **Choose the theme** by following `docs/THEMES.md`: score all six themes on brand fit, photo strength, trade and buyer, and how big an upgrade it is over the old site, then take the highest total (least recently used on a tie, from `~/.redesign-contractor/themes-used.log`). Set `brand.theme` and a one-sentence `brand.themeReason`. Leave `brand.fonts` out to use the theme's font pairing, unless the client has distinctive brand fonts worth keeping. Every theme is a normal business website; never invent a concept layout.
+- View every `contact-sheet-N.png` with the Read tool. Pick real job photos: a sharp hero over 100KB, an about/team photo, a wide feature photo, at least 12 gallery photos and one photo per featured service. For the `floodlit`, `slate` and `studio` themes also pick a landscape photo at least 1600px wide as `hero-wide` (set `images.heroWide`); if the client has no such photo, choose a different theme. **Reject** photos with baked-in text, marketing graphics, stock imagery, screenshots and blurry shots.
 - Write a map of candidate id to name and run `node scripts/photos.mjs pick --from <work>/_scrape/candidates --map map.json --out <project>/public/images`. Copy the logo to `public/images/`.
 - **If usable photos are missing** (site has too few, they are unusable, or the site was blocked), fill the gaps after Phase 6 with `node scripts/generate-images.mjs <project>`. It generates only the images the config references that do not exist yet. With `OPENAI_API_KEY` set it makes AI photographs (no people, text or logos); with no key it renders clean brand-coloured illustrations and a text logo. It records what it generated in `config.images.generatedFiles`, and the site then labels the gallery as illustrative. Replace generated images with real photos whenever they become available.
 
@@ -73,7 +74,7 @@ Start from `examples/starter/config.json` and read `docs/CONFIG.md`. Fill every 
 
 - `trade`: noun, plural, schema.org type, `slugPrefix`, and `selector` (`"breaker"` only for electricians, otherwise `"panel"`).
 - `business`: name, phone, email, address, ABN, `licences[]`, insurance, rating, reviewCount, rates, discount, years, customers, hours, social links.
-- `brand`, `images`, `copy` (hero lines and lede, section headings, about paragraphs, meta title and description), `stats`, `bento`, `steps`, `promise`, `priceSheet`, `faqs`, `reviews`, `gallery`, `offers`.
+- `brand` (including `theme` and `themeReason` from Phase 3), `images`, `copy` (hero lines and lede, section headings, about paragraphs, meta title and description), `stats`, `bento`, `steps`, `promise`, `priceSheet`, `faqs`, `reviews`, `gallery`, `offers`.
 - `services` (8 featured, shown in the selector) and `extraServices` (every other service page). Slugs must match the old URLs.
 - `regions`, `suburbs`, `regionPages`.
 
@@ -140,6 +141,7 @@ If nothing answers, diagnose (`docker logs <slug>` on the server, DNS) before re
 Tell the user, briefly and honestly:
 
 - **The live link, `https://<slug>.<base domain>`, first and prominently** (the user shows it to the client), then the admin URL and password and the private repo URL. Say that the DeepSeek key is on the server in `.env` (or that chat is on the scripted fallback).
+- The theme you chose and why (one sentence), and that switching to another theme is a one-line change to `brand.theme` plus a redeploy. Append `<date> <slug> <theme>` to `~/.redesign-contractor/themes-used.log`.
 - Which images were generated rather than taken from the client's site.
 - What was carried over (pages, words, suburbs, services) and the verification results.
 - A **CONFIRM list**: every price, rate, licence, offer or claim that came from an ambiguous source or that you could not verify (for example conflicting prices on the old site, placeholder upgrade offers, an unlicensed trade).
@@ -151,7 +153,7 @@ When the client is ready to go live on their own domain, follow `docs/DEPLOY.md`
 
 ## What the engine provides (do not rebuild it)
 
-Design: light branded theme from the client's colours, enterprise motion (Motion library), background paths hero, marquee, count-up stats, bento with spotlight cards, timeline, scroll-expanding media, testimonial columns, services selector, lightbox gallery, suburb search, FAQ.
+Design: six themes (see `docs/THEMES.md`), each branded from the client's colours, enterprise motion (Motion library), background paths hero, marquee, count-up stats, bento with spotlight cards, timeline, scroll-expanding media, testimonial columns, services selector, lightbox gallery, suburb search, FAQ.
 
 Backend (Express, one container): lead form, admin dashboard (leads and bookings, calendar with blocked days, chats with transcripts, traffic, conversions by source, settings), Stripe deposit links and Resend emails when keys are set, page tracking, security headers, rate limits, sitemap and robots, SEO schema, 301-safe URLs.
 

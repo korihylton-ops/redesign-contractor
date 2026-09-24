@@ -32,6 +32,15 @@ const business = Object.assign({
 business.legalName = business.legalName || business.name;
 business.phoneE164 = e164;
 business.phoneHref = 'tel:' + e164;
+/* Texting needs a number that can receive SMS. Australian landlines (+61 2/3/7/8) cannot: a "Text us"
+   button pointed at one opens the visitor's SMS app, lets them send, and the message silently never
+   arrives, which is a dead button no status check can see. A mobile in business.textNumber (or env
+   TEXT_NUMBER) turns texting on; otherwise text buttons fall back to the on-page enquiry form. */
+const textRaw = process.env.TEXT_NUMBER || b.textNumber || '';
+const textE164 = textRaw ? (textRaw.startsWith('+') ? '+' + digits(textRaw) : digits(textRaw).startsWith('0') ? '+61' + digits(textRaw).slice(1) : '+' + digits(textRaw)) : (b.phone && !/^\+61[2378]/.test(e164) ? e164 : '');
+business.textE164 = textE164;
+business.canText = !!textE164;
+business.reach = business.canText ? (textRaw ? `call ${b.phone} or text ${b.textNumber || textRaw}` : `call or text ${b.phone}`) : `call ${b.phone}`;
 business.licenceLine = (business.licences || []).map((l) => `${l.label} ${l.number}`).join('. ');
 business.city = business.address.suburb;
 
@@ -67,11 +76,25 @@ const mix = (a, c, t) => { const A = hex(a), Cc = hex(c); return toHex(A.map((v,
 const lum = (h) => { const [r, g, bl] = hex(h).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * bl; };
 const contrast = (a, c) => { const x = lum(a), y = lum(c); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 
-const brand = Object.assign({
-  primary: '#0bb2ea', ink: '#0c1e24', hazard: '#ffb000', surface: '#f4f8f9',
-  fonts: { displayFamily: 'Archivo', displayCss: 'Archivo:wdth,wght@62..125,100..900', bodyFamily: 'Hanken Grotesk', bodyCss: 'Hanken+Grotesk:wght@400;500;600;700' }
-}, cfg.brand || {});
-brand.fonts = Object.assign({ displayFamily: 'Archivo', displayCss: 'Archivo:wdth,wght@62..125,100..900', bodyFamily: 'Hanken Grotesk', bodyCss: 'Hanken+Grotesk:wght@400;500;600;700' }, brand.fonts || {});
+/* Visual themes. Every theme keeps the same page structure and features; a theme changes colours
+   (light or dark), fonts, the hero treatment and the styling of cards and buttons. Each has a default
+   font pairing, used when the config gives no fonts. See docs/THEMES.md for how to pick one. */
+const THEMES = {
+  classic: { displayFamily: 'Archivo', displayCss: 'Archivo:wdth,wght@62..125,100..900', bodyFamily: 'Hanken Grotesk', bodyCss: 'Hanken+Grotesk:wght@400;500;600;700' },
+  floodlit: { displayFamily: 'Big Shoulders Display', displayCss: 'Big+Shoulders+Display:wght@700;800', bodyFamily: 'Public Sans', bodyCss: 'Public+Sans:wght@400;500;600;700' },
+  harbour: { displayFamily: 'Manrope', displayCss: 'Manrope:wght@500;600;700;800', bodyFamily: 'Manrope', bodyCss: 'Manrope:wght@400;500;600;700' },
+  amber: { displayFamily: 'Outfit', displayCss: 'Outfit:wght@500;600;700;800', bodyFamily: 'Outfit', bodyCss: 'Outfit:wght@400;500;600;700' },
+  slate: { displayFamily: 'Barlow', displayCss: 'Barlow:wght@600;700;800', bodyFamily: 'Barlow', bodyCss: 'Barlow:wght@400;500;600;700' },
+  studio: { displayFamily: 'DM Serif Display', displayCss: 'DM+Serif+Display', bodyFamily: 'Figtree', bodyCss: 'Figtree:wght@400;500;600;700' },
+};
+const brand = Object.assign({ primary: '#0bb2ea', ink: '#0c1e24', hazard: '#ffb000', surface: '#f4f8f9' }, cfg.brand || {});
+brand.theme = Object.prototype.hasOwnProperty.call(THEMES, brand.theme) ? brand.theme : 'classic';
+// Amber Bold puts dark text on the accent colour; a dark accent would be unreadable, so fall back.
+if (brand.theme === 'amber' && contrast(brand.hazard, brand.ink) < 4.5) {
+  console.warn(`brand.theme "amber" needs a light accent (hazard ${brand.hazard} vs ink ${brand.ink} is below 4.5:1); using "harbour".`);
+  brand.theme = 'harbour';
+}
+brand.fonts = Object.assign({}, THEMES[brand.theme], brand.fonts || {});
 // Accent for text/links must pass 4.5:1 on white; darken the primary until it does unless one is supplied.
 brand.accentText = brand.accentText || (() => { let c = brand.primary; for (let i = 0; i < 12 && contrast(c, '#ffffff') < 4.6; i++) c = mix(c, '#000000', 0.12); return c; })();
 brand.primaryTint = brand.primaryTint || mix(brand.primary, '#ffffff', 0.88);
@@ -106,7 +129,7 @@ const paths = {
 };
 
 module.exports = {
-  cfg, site: cfg.site || {}, trade, business, brand, brandCss, fontsUrl, T, tokens, paths, cap,
+  cfg, site: cfg.site || {}, trade, business, brand, brandCss, fontsUrl, T, tokens, paths, cap, THEMES,
   images: cfg.images || {}, copy: cfg.copy || {}, stats: cfg.stats || [], bento: expandKnown(cfg.bento || []), steps: expandKnown(cfg.steps || []),
   services: expandKnown(services), extraServices: expandKnown(extraServices), formServices, suburbs, regions, regionPages: cfg.regionPages || [],
   reviews: cfg.reviews || [], faqs: expandKnown(cfg.faqs || []), priceSheet: expandKnown(cfg.priceSheet || []), gallery: cfg.gallery || [],

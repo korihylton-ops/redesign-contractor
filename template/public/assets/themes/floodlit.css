@@ -1,0 +1,71 @@
+/* Floodlit: dark navy site lit by the brand accent. Full-screen real photo hero with a tall condensed
+   headline. Needs a strong wide job photo (images.heroWide, else images.expand, else images.hero). */
+html.theme-floodlit {
+  --mains: #10233A; --paper: #15304D; --grey: #28405C; --ink: #0A1828; --ink-soft: #B8C7D8;
+  --cyan-tint: #1B3A5C; --teal: color-mix(in srgb, var(--amber) 70%, #ffffff);
+  --radius-panel: 4px; --radius-control: 3px;
+}
+html.theme-floodlit body { color: #DCE6F0; }
+html.theme-floodlit h1, html.theme-floodlit h2, html.theme-floodlit h3 { color: #F7FAFC; font-stretch: 100%; letter-spacing: .005em; }
+html.theme-floodlit h1, html.theme-floodlit h2 { font-weight: 800; line-height: .95; }
+html.theme-floodlit h2 { font-size: clamp(2.4rem, 5vw, 4.2rem); }
+html.theme-floodlit a:hover { color: #fff; }
+html.theme-floodlit .lede, html.theme-floodlit .crumbs { color: var(--ink-soft); }
+
+/* header */
+html.theme-floodlit .head { background: rgba(10, 24, 40, .92); border-color: var(--grey); }
+html.theme-floodlit .head__logo img, html.theme-floodlit .foot__logo { background: #fff; padding: 4px 8px; border-radius: 4px; }
+html.theme-floodlit .nav a { color: #F7FAFC; }
+html.theme-floodlit .nav a:hover { background: var(--cyan-tint); }
+html.theme-floodlit .head__toggle { border-color: #F7FAFC; }
+html.theme-floodlit .head__toggle span { background: #F7FAFC; }
+@media (max-width: 900px) { html.theme-floodlit .nav { background: var(--ink); } }
+
+/* buttons: the accent does the calling */
+html.theme-floodlit .btn { border-radius: var(--radius-control); }
+html.theme-floodlit .btn--call { background: var(--amber); color: #0A1828; }
+html.theme-floodlit .btn--call:hover { background: #fff; color: #0A1828; }
+html.theme-floodlit .btn--line { border-color: #DCE6F0; color: #F7FAFC; }
+html.theme-floodlit .btn--line:hover { background: #F7FAFC; color: #0A1828; }
+html.theme-floodlit .btn--ink { background: var(--amber); color: #0A1828; }
+
+/* hero: full-screen photo, headline bottom-left */
+html.theme-floodlit .hero--ent {
+  min-height: clamp(560px, 92vh, 920px); display: flex; align-items: flex-end;
+  background: linear-gradient(180deg, rgba(10, 24, 40, .25), rgba(10, 24, 40, .5) 45%, var(--mains) 97%), var(--hero-wide) center / cover;
+}
+html.theme-floodlit .hero--ent .bgpaths, html.theme-floodlit .hero__photo { display: none; }
+html.theme-floodlit .hero--ent .hero__grid { grid-template-columns: 1fr; width: min(100% - var(--gutter) * 2, var(--wrap)); }
+html.theme-floodlit .hero--ent h1 { font-size: clamp(3rem, 6.2vw, 5.8rem); max-width: 18ch; }
+html.theme-floodlit .hero--ent .lede { color: #fff; max-width: 36em; }
+html.theme-floodlit .trace small { color: var(--ink-soft); }
+
+/* surfaces */
+html.theme-floodlit .strip, html.theme-floodlit .tile, html.theme-floodlit .tcard, html.theme-floodlit .spec,
+html.theme-floodlit .aside__toc, html.theme-floodlit .aside__rel, html.theme-floodlit .form { background: var(--paper); color: #DCE6F0; }
+html.theme-floodlit .marquee a, html.theme-floodlit .regions a { color: #F7FAFC; background: transparent; border-color: var(--grey); }
+html.theme-floodlit .breaker { background: #1B3A5C; color: #F7FAFC; }
+html.theme-floodlit .breaker:hover { background: #22476F; }
+html.theme-floodlit .breaker[aria-selected="true"], html.theme-floodlit .board--panel .breaker[aria-selected="true"] { background: var(--paper); box-shadow: 0 0 0 3px var(--amber); }
+html.theme-floodlit .breaker small { color: var(--ink-soft); }
+html.theme-floodlit .board-help { border-color: var(--grey); }
+html.theme-floodlit .step__n { background: var(--amber); color: #0A1828; }
+html.theme-floodlit .stats .stat { border-left-color: var(--amber); }
+html.theme-floodlit .stats .stat b { color: var(--amber); }
+html.theme-floodlit .tile--hazard { border-color: var(--amber); }
+html.theme-floodlit .form input, html.theme-floodlit .form select, html.theme-floodlit .form textarea { background: #fff; color: #0A1828; }
+html.theme-floodlit .inner-hero__photo, html.theme-floodlit .hero__photo { border-radius: var(--radius-panel); }
+html.theme-floodlit .prose .callout { background: var(--cyan-tint); border-left-color: var(--amber); }
+@media (max-width: 860px) {
+  html.theme-floodlit .callbar { background: var(--ink); border-color: var(--grey); }
+  html.theme-floodlit .hero--ent { min-height: 78vh; }
+}
+
+/* controls read in the text font; the display face is for headings only */
+html.theme-floodlit .btn, html.theme-floodlit .breaker, html.theme-floodlit .chat__launch, html.theme-floodlit .offer__btns button, html.theme-floodlit .faq summary, html.theme-floodlit .prose thead th { font-family: var(--font-body); font-stretch: 100%; font-weight: 700; }
+html.theme-floodlit .aside__toc a, html.theme-floodlit .aside__rel a { color: #DCE6F0; }
+html.theme-floodlit .aside__toc a:hover, html.theme-floodlit .aside__rel a:hover { color: var(--amber); }
+
+/* every rule that uses the ink colour for text, re-lit for the dark ground */
+html.theme-floodlit .link-list a, html.theme-floodlit .aside li a, html.theme-floodlit .postlist a { color: #DCE6F0; }
+html.theme-floodlit .link-list a:hover, html.theme-floodlit .aside li a:hover, html.theme-floodlit .postlist a:hover { color: #fff; }

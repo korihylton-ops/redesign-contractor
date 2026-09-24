@@ -22,13 +22,15 @@ Tokens: `{{name}} {{legalName}} {{phone}} {{email}} {{city}} {{state}} {{noun}} 
 | `selectorHeading`, `selectorLede` | Heading and intro above the services selector. |
 
 ## business
-`name, legalName, phone, phoneE164?, email, abn, abnLabel?, address{street,suburb,state,postcode,country}, licences[{label,number,short?,detail?}], insurance, rating, reviewCount, standardRate, afterHoursRate, firstJobDiscount, yearsExperience, customersServed, people{owner,lead}, hoursText, open247, social{facebook,instagram,x,pinterest,youtube,tiktok,linkedin,google}`, optional `credentials[{title,sub}]` (the four lines under the hero; derived from licences, insurance and rating if omitted), `noPrices: true` if the client never publishes prices.
+`name, legalName, phone, phoneE164?, textNumber?, email, abn, abnLabel?, address{street,suburb,state,postcode,country}, licences[{label,number,short?,detail?}], insurance, rating, reviewCount, standardRate, afterHoursRate, firstJobDiscount, yearsExperience, customersServed, people{owner,lead}, hoursText, open247, social{facebook,instagram,x,pinterest,youtube,tiktok,linkedin,google}`, optional `credentials[{title,sub}]` (the four lines under the hero; derived from licences, insurance and rating if omitted), `noPrices: true` if the client never publishes prices.
+
+Texting: "Text us" buttons and the chat's "call or text" wording only appear when there is a number that can receive SMS. If `phone` is an Australian landline (02, 03, 07, 08), set `textNumber` to the business mobile (or env `TEXT_NUMBER` on the server). Without one, text buttons become "Send a message" and open the enquiry form, and the chat only offers calling. Never point an SMS button at a landline: the visitor's message silently never arrives.
 
 ## brand
-`primary` (action colour), `ink` (dark), `surface` (page background), `hazard` (emergency accent), `fonts{displayFamily, displayCss, bodyFamily, bodyCss}` (Google Fonts family names and CSS2 specs). Everything else (accessible link colour, tints, text colour on buttons, borders) is derived and contrast-checked automatically. Override with `accentText`, `primaryTint`, `onPrimary`, `inkSoft`, `border` if needed.
+`theme` (`classic`, `floodlit`, `harbour`, `amber`, `slate` or `studio`; see `docs/THEMES.md`), `themeReason` (one sentence, for the record), `primary` (action colour), `ink` (dark), `surface` (page background), `hazard` (the bright accent; also the emergency accent), `fonts{displayFamily, displayCss, bodyFamily, bodyCss}` (Google Fonts family names and CSS2 specs). Everything else (accessible link colour, tints, text colour on buttons, borders) is derived and contrast-checked automatically. Override with `accentText`, `primaryTint`, `onPrimary`, `inkSoft`, `border` if needed.
 
 ## images (files in `public/images/`)
-`logo, hero, heroAlt, about, aboutAlt, expand, expandAlt, og`. Names with an extension are used as is; bare names get `.jpg`.
+`logo, hero, heroAlt, heroWide, about, aboutAlt, expand, expandAlt, og`. `heroWide` is the landscape photo behind the hero in the `floodlit`, `slate` and `studio` themes (falls back to `expand`, then `hero`). Names with an extension are used as is; bare names get `.jpg`.
 
 ## copy
 Section objects; every field optional with a sensible default: `meta{homeTitle,homeDescription}`, `hero{lines[],lede,badge,floatB,quoteLabel}`, `services{heading,lede,help}`, `why`, `process`, `pricing{heading,lede,note}`, `expand{heading,body}`, `about{heading,paras[]}`, `reviews{heading,lede}`, `work`, `areas`, `faq`, `quote{heading,lede}`, `suburb{title,description,intro,introOutside}`, `longform{heading}`, `blog{intro}`, `aside{text}`.

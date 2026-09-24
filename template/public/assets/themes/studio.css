@@ -1,0 +1,25 @@
+/* Studio: soft grey and white, a full-width wide photo with a white panel over it, and a refined serif
+   headline (DM Serif Display) with a clean sans for text. Calm and premium. */
+html.theme-studio { --mains: #F4F5F7; --paper: #FFFFFF; --radius-panel: 4px; --radius-control: 4px; }
+html.theme-studio h1, html.theme-studio h2, html.theme-studio h3 { font-stretch: 100%; letter-spacing: -.01em; }
+html.theme-studio h1, html.theme-studio h2 { font-weight: 400; line-height: 1.05; }
+html.theme-studio h3 { font-family: var(--font-body); font-weight: 700; }
+html.theme-studio .btn { border-radius: var(--radius-control); }
+
+/* hero: wide photo band, white panel overlapping it */
+html.theme-studio .hero--ent { padding-top: 0; background: none; }
+html.theme-studio .hero--ent::before { content: ""; display: block; height: min(64vh, 580px); background: var(--hero-wide) center / cover; }
+html.theme-studio .hero--ent .bgpaths, html.theme-studio .hero__photo { display: none; }
+html.theme-studio .hero--ent .hero__grid { grid-template-columns: minmax(0, 660px); margin-top: -240px; }
+html.theme-studio .hero--ent .hero__grid > div:first-child { background: var(--paper); padding: clamp(26px, 4vw, 48px); border-radius: var(--radius-panel); box-shadow: 0 30px 60px -32px rgba(27, 36, 48, .45); }
+
+html.theme-studio .tile, html.theme-studio .tcard, html.theme-studio .spec { box-shadow: 0 1px 2px rgba(27, 36, 48, .08); }
+html.theme-studio .marquee a, html.theme-studio .regions a { border-radius: var(--radius-control); }
+html.theme-studio .breaker { border-radius: var(--radius-control); }
+@media (max-width: 860px) {
+  html.theme-studio .hero--ent::before { height: 300px; }
+  html.theme-studio .hero--ent .hero__grid { margin-top: -70px; }
+}
+
+/* controls read in the text font; the display face is for headings only */
+html.theme-studio .btn, html.theme-studio .breaker, html.theme-studio .chat__launch, html.theme-studio .offer__btns button, html.theme-studio .faq summary, html.theme-studio .prose thead th { font-family: var(--font-body); font-stretch: 100%; font-weight: 700; }

@@ -1,0 +1,29 @@
+/* Amber Bold: the brand's bright accent (brand.hazard) fills the hero as a full colour band. Pill
+   buttons, big rounded photos, soft accent-tinted sections. Only for brands with a bright, light
+   accent: config.js falls back to Harbour if the accent does not give dark text 4.5:1 contrast. */
+html.theme-amber {
+  --mains: #FFFFFF; --paper: color-mix(in srgb, var(--amber) 9%, #ffffff); --grey: color-mix(in srgb, var(--amber) 22%, #ffffff);
+  --radius-panel: 26px; --radius-control: 999px;
+}
+html.theme-amber h1, html.theme-amber h2, html.theme-amber h3 { font-stretch: 100%; letter-spacing: -.02em; }
+html.theme-amber h1, html.theme-amber h2 { font-weight: 700; }
+html.theme-amber .btn { border-radius: 999px; }
+html.theme-amber .btn--call { background: var(--ink); color: #fff; }
+html.theme-amber .btn--call:hover { background: var(--cyan); color: var(--on-primary); }
+
+html.theme-amber .hero--ent { background: var(--amber); color: var(--ink); }
+html.theme-amber .hero--ent .bgpaths { display: none; }
+html.theme-amber .hero--ent .lede, html.theme-amber .hero--ent .trace small { color: color-mix(in srgb, var(--ink) 82%, var(--amber)); }
+html.theme-amber .hero--ent .btn--line { border-color: var(--ink); color: var(--ink); }
+html.theme-amber .hero--ent .btn--line:hover { background: var(--ink); color: #fff; }
+html.theme-amber .hero--ent .hero__grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); }
+html.theme-amber .hero__photo { aspect-ratio: 1 / 1; border-radius: var(--radius-panel); }
+html.theme-amber .hero__badge { border-radius: 18px; }
+html.theme-amber .trace li::before { background: var(--ink); }
+
+html.theme-amber .strip { background: var(--paper); }
+html.theme-amber .tile:not(.tile--accent), html.theme-amber .tcard { background: #fff; }
+html.theme-amber .section--paper .tile:not(.tile--accent), html.theme-amber .section--paper .tcard, html.theme-amber .section--paper .spec { background: #fff; }
+html.theme-amber .marquee a, html.theme-amber .regions a { border-radius: 999px; }
+html.theme-amber .tile--hazard { box-shadow: inset 4px 0 0 var(--ink); border-color: var(--ink); }
+@media (max-width: 860px) { html.theme-amber .hero--ent .hero__grid { grid-template-columns: 1fr; } }

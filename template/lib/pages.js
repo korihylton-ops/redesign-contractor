@@ -58,7 +58,7 @@ function relatedFor(item, limit) {
 function aside(item, toc, src) {
   const rel = relatedFor(item, 8);
   return `<aside class="aside">
-    <div class="aside__cta"><h3>Need ${esc(/^[aeiou]/i.test(trade.noun) ? 'an' : 'a')} ${esc(trade.noun)}?</h3><p>${t(sec('aside').text || 'Call or text and we will get back to you fast.')}</p>
+    <div class="aside__cta"><h3>Need ${esc(/^[aeiou]/i.test(trade.noun) ? 'an' : 'a')} ${esc(trade.noun)}?</h3><p>${t(sec('aside').text || (B.canText ? 'Call or text and we will get back to you fast.' : 'Call us or send a message and we will get back to you fast.'))}</p>
       <div class="aside__btns">${callBtn(src + '-aside')}${textBtn(src + '-aside', 'Text us', 'btn--line')}<a class="btn btn--ink" href="#quote" data-track="quote" data-src="${src}-aside">Get a quote</a></div></div>
     ${toc.length >= 4 ? `<nav class="aside__toc" aria-label="On this page"><h3>On this page</h3><ul>${toc.slice(0, 14).map((x) => `<li><a href="#${x.id}">${esc(x.text)}</a></li>`).join('')}</ul></nav>` : ''}
     ${rel.length ? `<nav class="aside__rel" aria-label="Related pages"><h3>${item.kind === 'post' ? 'More guides' : 'More from this section'}</h3><ul>${rel.map((r) => `<li><a href="${r.path}">${esc(r.title)}</a></li>`).join('')}</ul></nav>` : ''}
@@ -137,7 +137,7 @@ function home() {
   const chips = (B.licences || []).map((l) => `<li>${esc(l.short || l.label)} ${esc(l.number)}<small>${esc(l.detail || '')}</small></li>`).concat(B.insurance ? [`<li>${esc(B.insurance)}<small>Insurance</small></li>`] : []).join('');
 
   const body = `
-<section class="hero hero--ent">
+<section class="hero hero--ent" style="--hero-wide:url('${img(C.images.heroWide || C.images.expand || C.images.hero)}')">
   ${bgPaths}
   <div class="wrap hero__grid">
     <div>

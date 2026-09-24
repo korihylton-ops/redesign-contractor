@@ -55,6 +55,8 @@
     }
   },
   "brand": {
+    "theme": "harbour",
+    "themeReason": "Sample: blue brand with a warm accent and one good photo, everyday home service.",
     "primary": "#1f7ae0",
     "ink": "#0d1b2a",
     "hazard": "#ff9f1c",

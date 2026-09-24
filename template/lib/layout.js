@@ -7,7 +7,7 @@ const { business: B, trade, T } = C;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const img = (name) => (name ? (/\.[a-z0-9]{3,4}$/i.test(name) ? `/images/${name}` : `/images/${name}.jpg`) : '');
 const SITE = () => (process.env.SITE_URL || C.site.siteUrl || 'http://localhost:3000').replace(/\/$/, '');
-const TEXT_NUMBER = () => process.env.TEXT_NUMBER || B.phoneE164;
+const TEXT_NUMBER = () => B.textE164;
 const smsHref = (body) => `sms:${TEXT_NUMBER()}?&body=${encodeURIComponent(body || T('Hi {{name}}, I would like a quote.'))}`;
 
 const fullAddress = [B.address.street, [B.address.suburb, B.address.state, B.address.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -36,15 +36,15 @@ const HAS_PHONE = !!B.phone;
 const callBtn = (src, label, cls) => HAS_PHONE
   ? `<a class="btn ${cls || 'btn--call'}" href="${B.phoneHref}" data-track="call" data-src="${src}">${label || 'Call ' + esc(B.phone)}</a>`
   : `<a class="btn ${cls || 'btn--call'}" href="#quote" data-track="quote" data-src="${src}">Get a quote</a>`;
-const textBtn = (src, label, cls, body) => HAS_PHONE
+const textBtn = (src, label, cls, body) => B.canText
   ? `<a class="btn ${cls || 'btn--line'}" href="${esc(smsHref(body))}" data-track="text" data-src="${src}">${label || 'Text us'}</a>`
-  : `<a class="btn ${cls || 'btn--line'}" href="#quote" data-track="quote" data-src="${src}">Get in touch</a>`;
+  : `<a class="btn ${cls || 'btn--line'}" href="#quote" data-track="quote" data-src="${src}">${HAS_PHONE ? 'Send a message' : 'Get in touch'}</a>`;
 
 function head({ title, description, path, jsonld = [], image, type }) {
   const url = SITE() + path;
   const ogImage = SITE() + (image || img(C.images.og || C.images.hero));
   return `<!doctype html>
-<html lang="${esc((C.site.locale || 'en-AU'))}">
+<html lang="${esc((C.site.locale || 'en-AU'))}" class="theme-${C.brand.theme}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -64,7 +64,8 @@ function head({ title, description, path, jsonld = [], image, type }) {
 <link href="${C.fontsUrl()}" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/enterprise.css">
-<link rel="stylesheet" href="/assets/chat.css">
+${C.brand.theme !== 'classic' ? `<link rel="stylesheet" href="/assets/themes/${C.brand.theme}.css">
+` : ''}<link rel="stylesheet" href="/assets/chat.css">
 <style id="brand">${C.brandCss()}</style>
 ${jsonld.map((j) => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`).join('\n')}
 </head>`;
@@ -102,7 +103,7 @@ function header() {
 }
 
 function chatWidget() {
-  return `<div class="chat" id="chat" data-phone="${esc(B.phone)}" data-email="${esc(B.email)}" data-name="${esc(B.name)}">
+  return `<div class="chat" id="chat" data-phone="${esc(B.phone)}" data-text="${esc(B.canText ? (B.textNumber || B.phone) : '')}" data-email="${esc(B.email)}" data-name="${esc(B.name)}">
   <button class="chat__launch" type="button" aria-expanded="false" aria-controls="chat-panel"><span class="chat__dot" aria-hidden="true"></span><span class="chat__launch-label">Chat with us</span></button>
   <section class="chat__panel" id="chat-panel" role="dialog" aria-label="Chat with ${esc(B.name)}" hidden>
     <header class="chat__head">
@@ -191,7 +192,7 @@ function quoteSection({ suburb, heading, id } = {}) {
   <div class="wrap quote-grid">
     <div>
       <h2 style="color:#fff">${esc(T(heading || q.heading || 'Get a fixed-price quote'))}</h2>
-      <p class="lede">${esc(T(q.lede || (HAS_PHONE ? 'Tell us what you need and we will call you back. If it cannot wait, call or text now.' : 'Tell us what you need and we will get back to you.')))}</p>
+      <p class="lede">${esc(T(q.lede || (HAS_PHONE ? (B.canText ? 'Tell us what you need and we will call you back. If it cannot wait, call or text now.' : 'Tell us what you need and we will call you back. If it cannot wait, call now.') : 'Tell us what you need and we will get back to you.')))}</p>
       <div class="hero__cta" style="margin:20px 0 0">${callBtn('quote-section')}${textBtn('quote-section', 'Text us', 'btn--line')}</div>
       <ul class="contact-list">
         ${HAS_PHONE ? `<li><b>Phone</b><a href="${B.phoneHref}" data-track="call" data-src="quote-section">${esc(B.phone)}</a></li>` : ''}

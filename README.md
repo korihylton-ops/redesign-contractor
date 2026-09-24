@@ -1,6 +1,6 @@
 # redesign-contractor
 
-A skill that rebuilds any contractor's website (electrician, plumber, HVAC, roofer, builder, landscaper) from its existing URL. Type `/redesign-contractor https://their-site.com` and it produces the same premium site every time, with the client's own brand, text, photos, suburbs and services.
+A skill that rebuilds any contractor's website (electrician, plumber, HVAC, roofer, builder, landscaper) from its existing URL. Type `/redesign-contractor https://their-site.com` and it produces a premium site with the client's own brand, text, photos, suburbs and services, in one of six themes (Classic, Floodlit, Harbour, Amber Bold, Slate Pro, Studio) chosen to fit each client. See `docs/THEMES.md`.
 
 **What you get**
 - A light, branded, animated marketing site: hero with animated background paths, suburb marquee, count-up stats, services selector, bento "why us", timeline, scroll-expanding media, testimonial columns, gallery, suburb search, FAQ.

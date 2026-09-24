@@ -1,0 +1,55 @@
+/* Slate Pro: fully dark slate site, square corners, headline centred over a darkened wide photo.
+   Steel-blue buttons (override --slate-accent per client if their brand has a light, bright colour). */
+html.theme-slate {
+  --mains: #18202B; --paper: #1F2935; --grey: #2E3A48; --ink: #10161E; --ink-soft: #A7B3C2;
+  --slate-accent: #6FA8E8;
+  --cyan-tint: #243142; --teal: var(--slate-accent);
+  --radius-panel: 6px; --radius-control: 4px;
+}
+html.theme-slate body { color: #E3E9F0; }
+html.theme-slate h1, html.theme-slate h2, html.theme-slate h3 { color: #FFFFFF; font-stretch: 100%; letter-spacing: -.01em; }
+html.theme-slate h1, html.theme-slate h2 { font-weight: 700; }
+html.theme-slate a:hover { color: #fff; }
+html.theme-slate .lede, html.theme-slate .crumbs { color: var(--ink-soft); }
+
+html.theme-slate .head { background: rgba(24, 32, 43, .94); border-color: var(--grey); }
+html.theme-slate .head__logo img, html.theme-slate .foot__logo { background: #fff; padding: 4px 8px; border-radius: 4px; }
+html.theme-slate .nav a { color: #FFFFFF; }
+html.theme-slate .nav a:hover { background: var(--cyan-tint); }
+html.theme-slate .head__toggle { border-color: #fff; }
+html.theme-slate .head__toggle span { background: #fff; }
+@media (max-width: 900px) { html.theme-slate .nav { background: var(--ink); } }
+
+html.theme-slate .btn { border-radius: var(--radius-control); }
+html.theme-slate .btn--call, html.theme-slate .btn--ink { background: var(--slate-accent); color: #0E1621; }
+html.theme-slate .btn--call:hover, html.theme-slate .btn--ink:hover { background: #fff; color: #0E1621; }
+html.theme-slate .btn--line { border-color: #E3E9F0; color: #fff; }
+html.theme-slate .btn--line:hover { background: #fff; color: #0E1621; }
+
+/* hero: centred over a darkened wide photo */
+html.theme-slate .hero--ent { background: linear-gradient(rgba(14, 22, 33, .74), rgba(14, 22, 33, .84)), var(--hero-wide) center / cover; text-align: center; padding-block: clamp(80px, 13vw, 160px); }
+html.theme-slate .hero--ent .bgpaths, html.theme-slate .hero__photo { display: none; }
+html.theme-slate .hero--ent .hero__grid { grid-template-columns: 1fr; justify-items: center; }
+html.theme-slate .hero--ent .lede { color: #D0D9E4; margin-inline: auto; }
+html.theme-slate .hero--ent .hero__cta { justify-content: center; }
+html.theme-slate .hero--ent .trace-wrap { display: none; }
+
+html.theme-slate .strip, html.theme-slate .tile, html.theme-slate .tcard, html.theme-slate .spec,
+html.theme-slate .aside__toc, html.theme-slate .aside__rel, html.theme-slate .form { background: var(--paper); color: #E3E9F0; }
+html.theme-slate .tile, html.theme-slate .tcard, html.theme-slate .spec { border-top: 3px solid var(--slate-accent); }
+html.theme-slate .marquee a, html.theme-slate .regions a { color: #fff; background: transparent; border-color: var(--grey); border-radius: var(--radius-control); }
+html.theme-slate .breaker { background: #243142; color: #fff; border-radius: var(--radius-control); }
+html.theme-slate .breaker:hover { background: #2B3A4E; }
+html.theme-slate .breaker[aria-selected="true"], html.theme-slate .board--panel .breaker[aria-selected="true"] { background: var(--paper); box-shadow: 0 0 0 2px var(--slate-accent); }
+html.theme-slate .breaker small { color: var(--ink-soft); }
+html.theme-slate .board-help { border-color: var(--grey); }
+html.theme-slate .step__n { background: var(--slate-accent); color: #0E1621; }
+html.theme-slate .stats .stat { border-left-color: var(--slate-accent); }
+html.theme-slate .form input, html.theme-slate .form select, html.theme-slate .form textarea { background: #fff; color: #0E1621; }
+html.theme-slate .prose .callout { background: var(--cyan-tint); border-left-color: var(--slate-accent); }
+@media (max-width: 860px) { html.theme-slate .callbar { background: var(--ink); border-color: var(--grey); } }
+html.theme-slate .aside__toc a, html.theme-slate .aside__rel a { color: #E3E9F0; }
+
+/* every rule that uses the ink colour for text, re-lit for the dark ground */
+html.theme-slate .link-list a, html.theme-slate .aside li a, html.theme-slate .postlist a { color: #E3E9F0; }
+html.theme-slate .link-list a:hover, html.theme-slate .aside li a:hover, html.theme-slate .postlist a:hover { color: #fff; }
