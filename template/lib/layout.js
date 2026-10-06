@@ -78,6 +78,7 @@ const hasAreas = () => C.suburbs.length > 0;
 function navItems() {
   if (C.nav) return C.nav;
   const items = [['/#services', 'Services']];
+  if (C.cfg && C.cfg.shop && C.cfg.shop.enabled) items.push(['/shop', 'Shop']);
   if (C.priceSheet.length) items.push(['/#pricing', 'Pricing']);
   if (hasReviews()) items.push(['/#reviews', 'Reviews']);
   if (hasAreas()) items.push(['/#areas', 'Areas']);

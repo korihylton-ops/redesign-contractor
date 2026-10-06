@@ -72,6 +72,10 @@ Follow `docs/DESIGN.md`. In short:
 3. Build `<project>/public/assets/themes/<name>.css` and `<project>/lib/home-custom.js` (the engine picks both up; `examples/custom-home/` shows the hooks). Set `brand.theme` to the new name and `brand.fonts` to the pairing.
 4. Screenshot desktop and mobile and look at every shot before moving on.
 
+## Phase 3c: Shop (when the business also sells products)
+
+If the client sells anything (second-hand or surplus stock, ex-display items, parts), or the user asks for e-commerce, turn on the built-in shop (`docs/SHOP.md`): `shop.enabled` in the config, listings managed from the owner's phone, Reserve plus "install it for me" on every item, one tap to mark sold. For a sales demo, seed clearly labelled example listings with `scripts/seed-shop-demo.mjs` after deploying, and tell the user how to remove them.
+
 ## Phase 4: Service area
 
 Find every suburb the client serves: suburb pages on the old site, "areas we service" text, and the address. If there are fewer than 30, research nearby suburbs within a realistic travel radius (web search) and only include places the client plausibly serves. Group into at least 3 regions and 2 region pages (for example the metro area and the wider region).
@@ -166,6 +170,6 @@ When the client is ready to go live on their own domain, follow `docs/DEPLOY.md`
 
 Design: a per-client custom theme and home layout hook (`docs/DESIGN.md`), six stock themes as a base (see `docs/THEMES.md`), each branded from the client's colours, enterprise motion (Motion library), background paths hero, marquee, count-up stats, bento with spotlight cards, timeline, scroll-expanding media, testimonial columns, services selector, lightbox gallery, suburb search, FAQ.
 
-Backend (Express, one container): lead form, a phone-friendly **Post a job** feed (owner snaps a photo in the admin, it appears first in the home page's recent jobs; photos persist in `data/jobs/`), admin dashboard (leads and bookings, calendar with blocked days, chats with transcripts, traffic, conversions by source, settings), Stripe deposit links and Resend emails when keys are set, page tracking, security headers, rate limits, sitemap and robots, SEO schema, 301-safe URLs.
+Backend (Express, one container): lead form, an optional **shop** (`docs/SHOP.md`: phone listing, reserve and install, sold in one tap), a phone-friendly **Post a job** feed (owner snaps a photo in the admin, it appears first in the home page's recent jobs; photos persist in `data/jobs/`), admin dashboard (leads and bookings, calendar with blocked days, chats with transcripts, traffic, conversions by source, settings), Stripe deposit links and Resend emails when keys are set, page tracking, security headers, rate limits, sitemap and robots, SEO schema, 301-safe URLs.
 
 Chat: DeepSeek with a `save_lead` tool that writes leads straight to the admin, call and text buttons, a configurable upgrade offer, conversion tracking on every call, text and quote click, and a scripted fallback.

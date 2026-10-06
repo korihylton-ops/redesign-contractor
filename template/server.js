@@ -40,7 +40,7 @@ function save(name) {
   fs.writeFileSync(tmp, JSON.stringify(store[name], null, 2));
   fs.renameSync(tmp, file);
 }
-load('leads', []); load('jobs', []); load('blocked', []); load('traffic', []); load('settings', {}); load('chats', []); load('conversions', []);
+load('leads', []); load('jobs', []); load('products', []); load('blocked', []); load('traffic', []); load('settings', {}); load('chats', []); load('conversions', []);
 
 const settings = () => Object.assign({
   notifyEmail: process.env.NOTIFY_EMAIL || C.business.email, depositPercent: 20, businessName: C.business.name,
@@ -202,6 +202,12 @@ app.delete('/api/jobs/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 app.use('/job-photos', express.static(JOBS_DIR, { maxAge: '30d', fallthrough: false }));
+
+/* ----- Shop: items listed from the owner's phone (admin, "Shop" tab). Off unless config.shop.enabled. ----- */
+const shop = require('./lib/shop');
+const isAdmin = (req) => { const h = req.headers.authorization || ''; return h.startsWith('Bearer ') && validToken(h.slice(7)); };
+shop.register(app, { express, store, save, requireAdmin, isAdmin, clean, newId, DATA_DIR,
+  sendHtml: (res, html) => res.status(200).type('html').set('Cache-Control', 'no-cache').send(html) });
 
 app.use(express.json({ limit: '20kb' }));
 
@@ -473,6 +479,7 @@ app.post('/api/send-deposit-email', requireAdmin, async (req, res) => {
 /* Public, non-secret info the admin dashboard needs to brand itself. */
 app.get('/api/site-meta', (req, res) => res.json({
   name: C.business.name, logo: '/images/' + (C.images.logo || 'logo.webp'), services: C.formServices, suburbs: C.suburbs.map((x) => x.name),
+  shop: shop.enabled() ? { categories: shop.cfg().categories, conditions: shop.cfg().conditions } : null,
   brand: { primary: C.brand.primary, ink: C.brand.ink, accentText: C.brand.accentText, primaryTint: C.brand.primaryTint, surface: C.brand.surface, border: C.brand.border, onPrimary: C.brand.onPrimary, hazard: C.brand.hazard },
   fontsUrl: C.fontsUrl(), fonts: { display: C.brand.fonts.displayFamily, body: C.brand.fonts.bodyFamily }
 }));
@@ -485,7 +492,7 @@ const sendHtml = (res, html, status) => res.status(status || 200).type('html').s
 
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(process.env.NOINDEX === '1' ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nAllow: /\nDisallow: /admin.html\nDisallow: /api/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
-  const urls = [...pages.keys()].map((p) => `<url><loc>${SITE_URL}${p === '/' ? '/' : p}</loc></url>`).join('');
+  const urls = [...pages.keys()].concat(shop.sitemapUrls(store)).map((p) => `<url><loc>${SITE_URL}${p === '/' ? '/' : p}</loc></url>`).join('');
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
 });
 

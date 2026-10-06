@@ -70,10 +70,15 @@
   /* ---------- Shell ---------- */
   function renderShell() {
     app.replaceChildren();
-    var tabs = [['leads', 'Bookings and leads'], ['jobs', 'Post a job'], ['chats', 'Chats'], ['calendar', 'Calendar'], ['traffic', 'Traffic and conversions'], ['settings', 'Settings']];
+    var tabs = [['leads', 'Bookings and leads'], ['jobs', 'Post a job']].concat(META.shop ? [['shop', 'Shop']] : []).concat([['chats', 'Chats'], ['calendar', 'Calendar'], ['traffic', 'Traffic and conversions'], ['settings', 'Settings']]);
     var tablist = h('div', { class: 'tabs', role: 'tablist' });
     tabs.forEach(function (t) {
-      tablist.appendChild(h('button', { role: 'tab', type: 'button', 'aria-selected': state.tab === t[0] ? 'true' : 'false', 'data-tab': t[0], text: t[1], onclick: function () { state.tab = t[0]; renderShell(); } }));
+      tablist.appendChild(h('button', { role: 'tab', type: 'button', 'aria-selected': state.tab === t[0] ? 'true' : 'false', 'data-tab': t[0], text: t[1], onclick: function () {
+        state.tab = t[0];
+        // Leads and calendar always show fresh data (new form, chat and shop reservations arrive all day).
+        if (t[0] === 'leads' || t[0] === 'calendar') reload().then(renderShell).catch(function () { renderShell(); });
+        else renderShell();
+      } }));
     });
     app.appendChild(h('div', { class: 'bar' },
       h('div', { class: 'bar__row' },
@@ -84,7 +89,7 @@
       tablist));
     var main = h('main', { id: 'main' });
     app.appendChild(main);
-    ({ leads: viewLeads, jobs: viewJobs, chats: viewChats, calendar: viewCalendar, traffic: viewTraffic, settings: viewSettings })[state.tab](main);
+    ({ leads: viewLeads, jobs: viewJobs, shop: viewShop, chats: viewChats, calendar: viewCalendar, traffic: viewTraffic, settings: viewSettings })[state.tab](main);
   }
 
   /* ---------- Leads ---------- */
@@ -335,6 +340,113 @@
     h('div', { class: 'actions' }, btn), msg);
     main.appendChild(form);
     main.appendChild(h('div', { class: 'panel' }, h('h2', { text: 'On the website now' }), list));
+    loadList();
+  }
+
+  /* ---------- Shop: list an item in about 30 seconds, one tap to mark it sold ---------- */
+  function remember(k, v) { try { if (v === undefined) return localStorage.getItem('shop_' + k) || ''; localStorage.setItem('shop_' + k, v); } catch (e) { return ''; } }
+  function viewShop(main) {
+    var S = META.shop || { categories: [], conditions: [] };
+    var photos = [], copyFrom = null, msg = h('p', { class: 'msg', role: 'status' });
+    var file = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'jobpost__file', id: 'shop-file' });
+    var strip = h('div', { class: 'shop-strip' });
+    var pick = h('label', { class: 'jobpost__pick', for: 'shop-file' }, h('span', { class: 'jobpost__plus', 'aria-hidden': 'true', text: '+' }), h('b', { text: 'Add photos' }), h('small', { text: 'Up to 6. The first one is the main photo.' }));
+    var title = h('input', { type: 'text', maxlength: '120', placeholder: 'e.g. 3-blade ceiling fan, white, with light', autocomplete: 'off' });
+    var price = h('input', { type: 'text', inputmode: 'decimal', placeholder: 'e.g. 120 (leave blank for "Ask for price")' });
+    var cond = h('select', null, S.conditions.map(function (c) { return h('option', { value: c, text: c }); }));
+    var cat = h('input', { type: 'text', list: 'shop-cats', placeholder: 'Choose or type a category', autocomplete: 'off' });
+    var dl = h('datalist', { id: 'shop-cats' }, S.categories.map(function (c) { return h('option', { value: c }); }));
+    var qty = h('input', { type: 'number', min: '1', max: '999', value: '1' });
+    var desc = h('textarea', { rows: '3', maxlength: '1500', placeholder: 'Size, brand, what is included, any marks or wear (optional)' });
+    var install = h('input', { type: 'checkbox', checked: true }), tested = h('input', { type: 'checkbox' });
+    cond.value = remember('cond') || S.conditions[2] || S.conditions[0]; cat.value = remember('cat');
+    var btn = h('button', { class: 'btn btn--primary jobpost__go', type: 'submit', text: 'Put it in the shop', disabled: true });
+    function drawStrip() {
+      strip.replaceChildren();
+      photos.forEach(function (d, i) {
+        var x = h('button', { type: 'button', class: 'shop-strip__x', 'aria-label': 'Remove photo ' + (i + 1), text: '×', onclick: function () { photos.splice(i, 1); drawStrip(); } });
+        strip.appendChild(h('span', { class: 'shop-strip__item' }, h('img', { src: d, alt: '' }), x));
+      });
+      pick.classList.toggle('has-photo', photos.length > 0);
+      btn.disabled = !(photos.length || copyFrom);
+    }
+    file.addEventListener('change', function () {
+      var list = Array.prototype.slice.call(file.files || []).slice(0, 6 - photos.length);
+      if (!list.length) return;
+      say(msg, 'Preparing photos...', true);
+      Promise.all(list.map(shrink)).then(function (ds) { photos = photos.concat(ds).slice(0, 6); file.value = ''; drawStrip(); say(msg, '', true); })
+        .catch(function (e) { say(msg, e.message); });
+    });
+    var list = h('div', { class: 'shoplist' }, h('p', { class: 'row__sub', text: 'Loading...' }));
+    var clearDemo = h('button', { class: 'btn btn--ghost', type: 'button', text: 'Remove example listings', hidden: true });
+    clearDemo.addEventListener('click', function () {
+      if (clearDemo.getAttribute('data-armed') !== '1') { clearDemo.setAttribute('data-armed', '1'); clearDemo.textContent = 'Tap again to remove all examples'; return; }
+      api('/products-clear-demo', { method: 'POST', body: {} }).then(function (r) { say(msg, r.removed + ' example listings removed.', true); clearDemo.removeAttribute('data-armed'); loadList(); }).catch(function (e) { say(msg, e.message); });
+    });
+    function setStatus(p, status) { return api('/products/' + p.id, { method: 'PATCH', body: { status: status } }).then(loadList).catch(function (e) { say(msg, e.message); }); }
+    function loadList() {
+      api('/products?all=1&limit=200').then(function (r) {
+        list.replaceChildren();
+        clearDemo.hidden = !r.products.some(function (p) { return p.demo; });
+        if (!r.products.length) { list.appendChild(h('p', { class: 'row__sub', text: 'Nothing listed yet. Add your first item above.' })); return; }
+        r.products.forEach(function (p) {
+          var actions = h('div', { class: 'shopitem__acts' });
+          var add = function (label, cls, fn) { actions.appendChild(h('button', { class: 'btn ' + (cls || 'btn--ghost'), type: 'button', text: label, onclick: fn })); };
+          if (p.status !== 'sold') add('Sold', 'btn--primary', function () { setStatus(p, 'sold'); });
+          if (p.status === 'available') add('Reserved', '', function () { setStatus(p, 'reserved'); });
+          if (p.status !== 'available') add('Back in stock', '', function () { setStatus(p, 'available'); });
+          add('Change price', '', function () {
+            var row = h('form', { class: 'shopitem__price' });
+            var inp = h('input', { type: 'text', inputmode: 'decimal', value: p.price === null ? '' : String(p.price), 'aria-label': 'New price' });
+            row.appendChild(inp); row.appendChild(h('button', { class: 'btn btn--primary', type: 'submit', text: 'Save' }));
+            row.addEventListener('submit', function (e) { e.preventDefault(); api('/products/' + p.id, { method: 'PATCH', body: { price: inp.value } }).then(loadList).catch(function (er) { say(msg, er.message); }); });
+            actions.replaceWith(row); inp.focus();
+          });
+          add('List another like this', '', function () {
+            copyFrom = p.id; photos = []; title.value = p.title; price.value = p.price === null ? '' : String(p.price); cond.value = p.condition; cat.value = p.category || ''; desc.value = p.description || '';
+            drawStrip(); say(msg, 'Copied. Same photos will be used unless you add new ones.', true); title.focus(); window.scrollTo(0, 0);
+          });
+          var del = h('button', { class: 'btn btn--ghost', type: 'button', text: 'Delete' });
+          del.addEventListener('click', function () {
+            if (del.getAttribute('data-armed') !== '1') { del.setAttribute('data-armed', '1'); del.textContent = 'Tap again to delete'; return; }
+            api('/products/' + p.id, { method: 'DELETE' }).then(loadList).catch(function (e) { say(msg, e.message); });
+          });
+          actions.appendChild(del);
+          list.appendChild(h('article', { class: 'shopitem shopitem--' + p.status },
+            h('img', { src: p.photos[0] || '', alt: '' }),
+            h('div', null,
+              h('b', { text: p.title }),
+              h('span', { class: 'shopitem__meta', text: [p.price === null ? 'Ask for price' : '$' + p.price, p.condition, p.category, p.qty > 1 ? p.qty + ' available' : ''].filter(Boolean).join(' · ') }),
+              h('span', { class: 'tag tag--' + p.status, text: p.demo ? p.status + ' (example)' : p.status }),
+              h('a', { href: p.url, target: '_blank', rel: 'noopener', text: 'View on site' })),
+            actions));
+        });
+      }).catch(function (e) { list.replaceChildren(h('p', { class: 'msg err', text: e.message })); });
+    }
+    var form = h('form', { class: 'panel jobpost', style: 'margin-top:0', onsubmit: function (e) {
+      e.preventDefault();
+      if (!title.value.trim()) { say(msg, 'Give the item a title.'); title.focus(); return; }
+      btn.disabled = true; btn.textContent = 'Listing...';
+      remember('cond', cond.value); remember('cat', cat.value);
+      api('/products', { method: 'POST', body: { photos: photos, copyPhotosFrom: photos.length ? null : copyFrom, title: title.value, price: price.value, condition: cond.value, category: cat.value, qty: qty.value, description: desc.value, install: install.checked, tested: tested.checked } })
+        .then(function (r) {
+          say(msg, 'Listed. It is live in the shop now.', true);
+          photos = []; copyFrom = null; title.value = ''; price.value = ''; desc.value = ''; qty.value = '1'; drawStrip();
+          btn.textContent = 'Put it in the shop'; loadList();
+        })
+        .catch(function (er) { say(msg, er.message); btn.disabled = false; btn.textContent = 'Put it in the shop'; });
+    } },
+    h('h2', { text: 'Add an item to the shop' }),
+    h('p', { class: 'row__sub', text: 'Photos, a title and a price is all it needs. When it sells, tap Sold below: it shows as sold for two weeks, then disappears by itself.' }),
+    h('div', { class: 'jobpost__media' }, file, pick, strip),
+    field('Title', title, 'shop-title'), field('Price (AUD)', price, 'shop-price'),
+    h('div', { class: 'shop-two' }, field('Condition', cond, 'shop-cond'), field('Category', cat, 'shop-cat')), dl,
+    h('div', { class: 'shop-two' }, field('How many', qty, 'shop-qty'), h('div', { class: 'shop-checks' },
+      h('label', null, install, ' Offer installation'), h('label', null, tested, ' Tested by me'))),
+    field('Description', desc, 'shop-desc'),
+    h('div', { class: 'actions' }, btn), msg);
+    main.appendChild(form);
+    main.appendChild(h('div', { class: 'panel' }, h('div', { class: 'shoplist__head' }, h('h2', { text: 'Your listings' }), clearDemo), list));
     loadList();
   }
 

@@ -181,6 +181,8 @@ ${C.stats.length ? `<section class="section section--ink stats" aria-label="${es
   </div>
 </section>
 
+${require('./shop').homeSection('section section--paper')}
+
 ${C.bento.length ? `<section class="section" id="why">
   <div class="wrap">
     <h2 data-split>${t(why.heading || 'Why choose {{name}}')}</h2>

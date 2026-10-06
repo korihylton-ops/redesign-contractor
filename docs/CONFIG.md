@@ -48,6 +48,9 @@ Section objects; every field optional with a sensible default: `meta{homeTitle,h
 - `chat{facts[], chips[], serviceKeywords[{pattern,service}], emergencyAdvice, emergencyPattern, dangerPattern}` optional tuning.
 - `nav[[href,label]]` overrides the header links.
 
+## shop (optional)
+`enabled, heading, lede, homeLede, categories[], conditions[], installOffer, soldVisibleDays, testedLabel`. Off by default. See `docs/SHOP.md`.
+
 ## Extra pages (content floors)
 `content/site/pages.json` is text scraped from the old site. `content/site/generated.json` holds additional pages you write, same shape:
 

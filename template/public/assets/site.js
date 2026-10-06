@@ -355,6 +355,62 @@
     }).catch(function () { /* keep the standard gallery */ });
   }
 
+  /* Shop: category filter, product photo thumbnails, reserve form and the home page "In stock now" strip */
+  $$('.shop-filter button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var f = b.getAttribute('data-shop-cat');
+      $$('.shop-filter button').forEach(function (x) { x.classList.toggle('is-on', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      $$('.shop-grid .shop-card').forEach(function (c) { c.hidden = !!f && c.getAttribute('data-cat') !== f; });
+    });
+  });
+  var productPhoto = document.getElementById('product-photo');
+  if (productPhoto) $$('.product__thumbs button').forEach(function (b) {
+    b.addEventListener('click', function () { productPhoto.src = b.getAttribute('data-photo'); });
+  });
+  $$('form.reserve').forEach(function (form) {
+    var status = $('.form__status', form), btn = $('button[type=submit]', form);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var d = {}; new FormData(form).forEach(function (v, k) { d[k] = v; });
+      var item = form.getAttribute('data-product') + ' (' + form.getAttribute('data-price') + ')';
+      var body = {
+        name: d.name, phone: d.phone, suburb: d.suburb, service: 'Shop item',
+        message: 'Reserve: ' + item + (d.install ? '\nWants it installed: yes' : '') + (d.note ? '\n' + d.note : ''),
+        page: location.pathname, sid: sid
+      };
+      btn.disabled = true; btn.textContent = 'Reserving...'; status.className = 'form__status'; status.textContent = '';
+      fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error((res.j && res.j.error) || 'Something went wrong.');
+          form.reset(); status.className = 'form__status is-ok';
+          status.textContent = 'Reserved. We will call you shortly to confirm and arrange pickup' + (body.message.indexOf('installed') > -1 ? ' and installation.' : '.');
+        })
+        .catch(function (err) { status.className = 'form__status is-err'; status.textContent = err.message + ' You can also call or text us.'; })
+        .finally(function () { btn.disabled = false; btn.textContent = 'Reserve this item'; });
+    });
+  });
+  var stock = $('[data-stock]');
+  if (stock && window.fetch) {
+    fetch('/api/products?available=1&limit=' + (stock.getAttribute('data-stock') || 4)).then(function (r) { return r.ok ? r.json() : { products: [] }; }).then(function (d) {
+      var items = (d && d.products) || [], grid = $('.stock-grid', stock);
+      if (!items.length || !grid) return;
+      items.forEach(function (p) {
+        var a = document.createElement('a'); a.className = 'shop-card'; a.href = p.url;
+        var pic = document.createElement('span'); pic.className = 'shop-card__img';
+        if (p.photos[0]) { var im = document.createElement('img'); im.src = p.photos[0]; im.alt = p.title; im.loading = 'lazy'; pic.appendChild(im); }
+        if (p.status === 'reserved') { var r = document.createElement('span'); r.className = 'shop-badge shop-badge--res'; r.textContent = 'Reserved'; pic.appendChild(r); }
+        if (p.demo) { var x = document.createElement('span'); x.className = 'shop-badge shop-badge--demo'; x.textContent = 'Example listing'; pic.appendChild(x); }
+        var body = document.createElement('span'); body.className = 'shop-card__body';
+        var t = document.createElement('b'); t.textContent = p.title;
+        var m = document.createElement('span'); m.className = 'shop-card__meta'; m.textContent = [p.condition, p.category].filter(Boolean).join(' · ');
+        var pr = document.createElement('span'); pr.className = 'shop-card__price'; pr.textContent = p.price === null ? 'Ask for price' : '$' + Number(p.price).toLocaleString('en-AU');
+        body.appendChild(t); body.appendChild(m); body.appendChild(pr); a.appendChild(pic); a.appendChild(body); grid.appendChild(a);
+      });
+      stock.hidden = false;
+    }).catch(function () { /* the strip stays hidden */ });
+  }
+
   /* Lead forms post to the same-origin Express backend */
   $$('form.js-lead').forEach(function (form) {
     var status = $('.form__status', form), btn = $('button[type=submit]', form);
