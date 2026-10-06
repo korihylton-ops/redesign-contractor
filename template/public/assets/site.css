@@ -258,3 +258,12 @@ p { margin: 0 0 1em; max-width: 68ch; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Recent jobs posted from the admin */
+.work .work__job { position: relative; }
+.work__cap { position: absolute; left: 10px; bottom: 10px; right: 10px; padding: 6px 10px; border-radius: 8px; background: rgba(11, 22, 32, .78); color: #fff; font-size: .85rem; font-weight: 600; text-align: left; }
+
+/* Buttons inside dark sections: ".section--ink a" would otherwise recolour button text (unreadable call buttons). */
+.section--ink a.btn--call { color: var(--on-primary, var(--ink)); }
+.section--ink a.btn--call:hover { color: #fff; }
+.section--ink a.btn--ink { color: #fff; }

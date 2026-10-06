@@ -38,11 +38,34 @@ await p.screenshot({ path: path.join(shots, 'home.png') });
 const html = await p.content();
 ok('no unresolved {{tokens}} on home', !/\{\{\w+\}\}/.test(html), (html.match(/\{\{\w+\}\}/g) || []).slice(0, 3).join(','));
 ok('no duplicate ids on home', await p.evaluate(() => { const ids = [...document.querySelectorAll('[id]')].map((e) => e.id); return ids.length === new Set(ids).size; }));
-ok('hero image loaded', await p.evaluate(() => { const i = document.querySelector('.hero__photo img'); return !i || (i.complete && i.naturalWidth > 0); }));
+ok('hero image loaded', await p.evaluate(() => { const i = document.querySelector('.hero__photo img, [data-hero-photo] img, main img[fetchpriority="high"]'); return !i || (i.complete && i.naturalWidth > 0); }));
 ok('logo loaded', await p.evaluate(() => { const i = document.querySelector('.head__logo img'); return i.complete && i.naturalWidth > 0; }));
 ok('brand colour applied', (await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cyan').trim().toLowerCase())) === String(cfg.brand.primary).toLowerCase());
 ok('Motion library loaded', await p.evaluate(() => !!window.Motion));
-ok('services selector switches panels', await (async () => { const tabs = await p.$$('.breaker'); if (tabs.length < 2) return false; await tabs[1].click(); await p.waitForTimeout(500); return (await p.locator('#spec-1').isVisible()) && !(await p.locator('#spec-0').isVisible()); })());
+// Stock homes use the breaker/panel selector; a custom home (docs/DESIGN.md) only has to link every featured service.
+if (await p.$('.breaker')) {
+  ok('services selector switches panels', await (async () => { const tabs = await p.$$('.breaker'); if (tabs.length < 2) return false; await tabs[1].click(); await p.waitForTimeout(500); return (await p.locator('#spec-1').isVisible()) && !(await p.locator('#spec-0').isVisible()); })());
+} else {
+  const linked = await p.$$eval('#services a[href^="/"]', (a) => a.map((x) => x.getAttribute('href')));
+  ok('custom home links every featured service', cfg.services.every((x) => linked.includes('/' + x.slug)), linked.length + ' links');
+}
+
+// Every visible button must have readable text (a button whose text matches its background looks dead).
+const unreadable = async () => p.evaluate(() => {
+  const rgb = (c) => { const m = c.match(/[\d.]+/g); return m ? m.map(Number) : [0, 0, 0, 0]; };
+  const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const bgOf = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c[3] === undefined || c[3] > 0.5) return c; } return [255, 255, 255]; };
+  return [...document.querySelectorAll('.btn, button')].filter((b) => b.offsetParent && b.textContent.trim() && getComputedStyle(b).visibility !== 'hidden')
+    .map((b) => ({ t: b.textContent.trim().slice(0, 30), r: ratio(rgb(getComputedStyle(b).color), bgOf(b)) })).filter((x) => x.r < 3)
+    .map((x) => x.t + ' (' + x.r.toFixed(2) + ':1)');
+});
+for (const u of ['/', '/' + cfg.services[0].slug, '/' + prefix + cfg.suburbs[0].slug]) {
+  if (u !== '/') { await p.goto(SITE + u, { waitUntil: 'networkidle' }); await p.waitForTimeout(800); }
+  const bad = await unreadable();
+  ok('every button readable on ' + u, bad.length === 0, bad.slice(0, 4).join(' | '));
+}
+await p.goto(SITE, { waitUntil: 'networkidle' }); await p.waitForTimeout(1500);
 ok('every configured suburb is linked', (await p.locator('.regions a').count()) === cfg.suburbs.length, `${await p.locator('.regions a').count()}/${cfg.suburbs.length}`);
 for (const im of await p.locator('.work img').all()) await im.scrollIntoViewIfNeeded();
 await p.waitForTimeout(1500);

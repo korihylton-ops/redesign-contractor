@@ -70,7 +70,7 @@
   /* ---------- Shell ---------- */
   function renderShell() {
     app.replaceChildren();
-    var tabs = [['leads', 'Bookings and leads'], ['chats', 'Chats'], ['calendar', 'Calendar'], ['traffic', 'Traffic and conversions'], ['settings', 'Settings']];
+    var tabs = [['leads', 'Bookings and leads'], ['jobs', 'Post a job'], ['chats', 'Chats'], ['calendar', 'Calendar'], ['traffic', 'Traffic and conversions'], ['settings', 'Settings']];
     var tablist = h('div', { class: 'tabs', role: 'tablist' });
     tabs.forEach(function (t) {
       tablist.appendChild(h('button', { role: 'tab', type: 'button', 'aria-selected': state.tab === t[0] ? 'true' : 'false', 'data-tab': t[0], text: t[1], onclick: function () { state.tab = t[0]; renderShell(); } }));
@@ -84,7 +84,7 @@
       tablist));
     var main = h('main', { id: 'main' });
     app.appendChild(main);
-    ({ leads: viewLeads, chats: viewChats, calendar: viewCalendar, traffic: viewTraffic, settings: viewSettings })[state.tab](main);
+    ({ leads: viewLeads, jobs: viewJobs, chats: viewChats, calendar: viewCalendar, traffic: viewTraffic, settings: viewSettings })[state.tab](main);
   }
 
   /* ---------- Leads ---------- */
@@ -265,6 +265,77 @@
       var tally = function (title, rows) { return h('div', { class: 'panel', style: 'margin:0' }, h('h3', { text: title }), rows.length ? h('ul', { class: 'tally' }, rows.map(function (r) { return h('li', null, h('span', { text: r.name }), h('b', { text: String(r.count) })); })) : h('p', { class: 'row__sub', text: 'No data yet.' })); };
       box.appendChild(h('div', { class: 'cols' }, tally('Top pages', t.pages), tally('Top sources', t.sources), tally('Devices', t.devices)));
     }).catch(function (e) { box.replaceChildren(h('p', { class: 'msg err', text: e.message })); });
+  }
+
+  /* ---------- Post a job: snap a photo on site, it appears in "Recent jobs" on the website ---------- */
+  function shrink(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var max = 1600, w = img.naturalWidth, ht = img.naturalHeight, k = Math.min(1, max / Math.max(w, ht));
+        var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(ht * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That file is not a photo this browser can read.')); };
+      img.src = url;
+    });
+  }
+  function viewJobs(main) {
+    var data = null, msg = h('p', { class: 'msg', role: 'status' });
+    var file = h('input', { type: 'file', accept: 'image/*', class: 'jobpost__file', id: 'job-file' });
+    var preview = h('img', { class: 'jobpost__preview', alt: '' });
+    var pick = h('label', { class: 'jobpost__pick', for: 'job-file' }, h('span', { class: 'jobpost__plus', 'aria-hidden': 'true', text: '+' }), h('b', { text: 'Take or choose a photo' }), h('small', { text: 'Straight from your phone camera or camera roll' }));
+    var svc = h('select', null, h('option', { value: '', text: 'Choose a service' }), SERVICES.map(function (x) { return h('option', { value: x, text: x }); }));
+    var sub = h('input', { type: 'text', list: 'job-suburbs', placeholder: 'e.g. Shell Cove', autocomplete: 'off' });
+    var dl = h('datalist', { id: 'job-suburbs' }, (META.suburbs || []).map(function (x) { return h('option', { value: x }); }));
+    var cap = h('textarea', { rows: '2', maxlength: '200', placeholder: 'One line about the job (optional)' });
+    var btn = h('button', { class: 'btn btn--primary jobpost__go', type: 'submit', text: 'Post to website', disabled: true });
+    file.addEventListener('change', function () {
+      var f = file.files && file.files[0];
+      if (!f) return;
+      say(msg, 'Preparing photo...', true);
+      shrink(f).then(function (d) { data = d; preview.src = d; pick.classList.add('has-photo'); btn.disabled = false; say(msg, '', true); })
+        .catch(function (e) { data = null; btn.disabled = true; say(msg, e.message); });
+    });
+    var list = h('div', { class: 'jobgrid' }, h('p', { class: 'row__sub', text: 'Loading...' }));
+    function loadList() {
+      api('/jobs?limit=60').then(function (r) {
+        list.replaceChildren();
+        if (!r.jobs.length) { list.appendChild(h('p', { class: 'row__sub', text: 'Nothing posted yet. Until you post jobs, the website shows its standard gallery.' })); return; }
+        r.jobs.forEach(function (j) {
+          var del = h('button', { class: 'btn btn--ghost', type: 'button', text: 'Remove' });
+          del.addEventListener('click', function () {
+            if (del.getAttribute('data-armed') !== '1') { del.setAttribute('data-armed', '1'); del.textContent = 'Tap again to remove'; return; }
+            del.disabled = true;
+            api('/jobs/' + j.id, { method: 'DELETE' }).then(loadList).catch(function (e) { say(msg, e.message); del.disabled = false; });
+          });
+          list.appendChild(h('figure', { class: 'jobcard' }, h('img', { src: j.url, alt: j.caption || j.service || 'Job photo', loading: 'lazy' }),
+            h('figcaption', null, h('b', { text: [j.service, j.suburb].filter(Boolean).join(', ') || 'Job' }), j.caption ? h('span', { text: j.caption }) : null, h('small', { text: fmtDate(j.createdAt) }), del)));
+        });
+      }).catch(function (e) { list.replaceChildren(h('p', { class: 'msg err', text: e.message })); });
+    }
+    var form = h('form', { class: 'panel jobpost', style: 'margin-top:0', onsubmit: function (e) {
+      e.preventDefault();
+      if (!data) return;
+      btn.disabled = true; btn.textContent = 'Posting...';
+      api('/jobs', { method: 'POST', body: { image: data, service: svc.value, suburb: sub.value, caption: cap.value } })
+        .then(function () {
+          say(msg, 'Posted. It is live on the website now.', true);
+          data = null; file.value = ''; preview.removeAttribute('src'); pick.classList.remove('has-photo'); cap.value = '';
+          btn.textContent = 'Post to website'; loadList();
+        })
+        .catch(function (er) { say(msg, er.message); btn.disabled = false; btn.textContent = 'Post to website'; });
+    } },
+    h('h2', { text: 'Post a job to the website' }),
+    h('p', { class: 'row__sub', text: 'Snap a photo when you finish a job. It goes straight into "Recent jobs" on the home page. No WordPress, no resizing, about 20 seconds.' }),
+    h('div', { class: 'jobpost__media' }, file, pick, preview),
+    field('Service', svc, 'job-svc'), field('Suburb', sub, 'job-sub'), dl, field('Caption', cap, 'job-cap'),
+    h('div', { class: 'actions' }, btn), msg);
+    main.appendChild(form);
+    main.appendChild(h('div', { class: 'panel' }, h('h2', { text: 'On the website now' }), list));
+    loadList();
   }
 
   /* ---------- Settings ---------- */

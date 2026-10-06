@@ -40,7 +40,7 @@ function save(name) {
   fs.writeFileSync(tmp, JSON.stringify(store[name], null, 2));
   fs.renameSync(tmp, file);
 }
-load('leads', []); load('blocked', []); load('traffic', []); load('settings', {}); load('chats', []); load('conversions', []);
+load('leads', []); load('jobs', []); load('blocked', []); load('traffic', []); load('settings', {}); load('chats', []); load('conversions', []);
 
 const settings = () => Object.assign({
   notifyEmail: process.env.NOTIFY_EMAIL || C.business.email, depositPercent: 20, businessName: C.business.name,
@@ -156,7 +156,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'");
   next();
 });
 
@@ -172,6 +172,36 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), (req,
   }
   res.json({ received: true });
 });
+
+/* ----- Job feed: photos the owner posts from their phone in the admin ("Post a job").
+   The site never depends on these: with none posted, the gallery shows its standard images. ----- */
+const JOBS_DIR = path.join(DATA_DIR, 'jobs');
+fs.mkdirSync(JOBS_DIR, { recursive: true });
+const publicJob = (j) => ({ id: j.id, createdAt: j.createdAt, caption: j.caption, service: j.service, suburb: j.suburb, url: '/job-photos/' + j.file });
+app.post('/api/jobs', requireAdmin, express.json({ limit: '8mb' }), (req, res) => {
+  const b = req.body || {};
+  const m = typeof b.image === 'string' && b.image.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return res.status(400).json({ error: 'Please choose a photo.' });
+  const buf = Buffer.from(m[1], 'base64');
+  if (buf.length < 2000 || buf.length > 6 * 1024 * 1024 || buf[0] !== 0xff || buf[1] !== 0xd8) return res.status(400).json({ error: 'That photo could not be read. Try another one.' });
+  const job = { id: newId(), createdAt: new Date().toISOString(), caption: clean(b.caption, 200), service: clean(b.service, 80), suburb: clean(b.suburb, 80) };
+  job.file = job.id + '.jpg';
+  fs.writeFileSync(path.join(JOBS_DIR, job.file), buf);
+  store.jobs.unshift(job);
+  if (store.jobs.length > 300) store.jobs.splice(300).forEach((old) => fs.rm(path.join(JOBS_DIR, old.file), () => {}));
+  save('jobs');
+  res.json({ job: publicJob(job) });
+});
+app.get('/api/jobs', (req, res) => { res.set('Cache-Control', 'no-cache'); res.json({ jobs: store.jobs.slice(0, Math.min(Number(req.query.limit) || 24, 60)).map(publicJob) }); });
+app.delete('/api/jobs/:id', requireAdmin, (req, res) => {
+  const i = store.jobs.findIndex((j) => j.id === req.params.id);
+  if (i < 0) return res.status(404).json({ error: 'Not found.' });
+  const [job] = store.jobs.splice(i, 1);
+  fs.rm(path.join(JOBS_DIR, job.file), () => {});
+  save('jobs');
+  res.json({ ok: true });
+});
+app.use('/job-photos', express.static(JOBS_DIR, { maxAge: '30d', fallthrough: false }));
 
 app.use(express.json({ limit: '20kb' }));
 
@@ -442,7 +472,7 @@ app.post('/api/send-deposit-email', requireAdmin, async (req, res) => {
 
 /* Public, non-secret info the admin dashboard needs to brand itself. */
 app.get('/api/site-meta', (req, res) => res.json({
-  name: C.business.name, logo: '/images/' + (C.images.logo || 'logo.webp'), services: C.formServices,
+  name: C.business.name, logo: '/images/' + (C.images.logo || 'logo.webp'), services: C.formServices, suburbs: C.suburbs.map((x) => x.name),
   brand: { primary: C.brand.primary, ink: C.brand.ink, accentText: C.brand.accentText, primaryTint: C.brand.primaryTint, surface: C.brand.surface, border: C.brand.border, onPrimary: C.brand.onPrimary, hazard: C.brand.hazard },
   fontsUrl: C.fontsUrl(), fonts: { display: C.brand.fonts.displayFamily, body: C.brand.fonts.bodyFamily }
 }));

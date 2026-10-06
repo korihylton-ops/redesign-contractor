@@ -306,10 +306,53 @@
   var lb = $('.lightbox');
   if (lb && lb.showModal) {
     var lbImg = $('img', lb);
-    $$('.work button').forEach(function (b) {
-      b.addEventListener('click', function () { lbImg.src = b.getAttribute('data-full'); lbImg.alt = b.getAttribute('data-alt') || ''; lb.showModal(); });
+    var workGrid = $('.work');
+    if (workGrid) workGrid.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-full]');
+      if (!b) return;
+      lbImg.src = b.getAttribute('data-full'); lbImg.alt = b.getAttribute('data-alt') || ''; lb.showModal();
     });
     lb.addEventListener('click', function (e) { if (e.target === lb || e.target.tagName === 'BUTTON') lb.close(); });
+  }
+
+  /* Services index: the photo beside the list follows the service you point at or tab to */
+  var svcPhoto = document.getElementById('svc-photo');
+  if (svcPhoto) $$('.svc-index a').forEach(function (a) {
+    var show = function () {
+      if (svcPhoto.getAttribute('src') === a.getAttribute('data-photo')) return;
+      $$('.svc-index a[aria-current]').forEach(function (x) { x.removeAttribute('aria-current'); });
+      a.setAttribute('aria-current', 'true');
+      svcPhoto.style.opacity = '0';
+      setTimeout(function () { svcPhoto.src = a.getAttribute('data-photo'); svcPhoto.alt = a.getAttribute('data-alt') || ''; svcPhoto.style.opacity = '1'; }, 180);
+    };
+    a.addEventListener('mouseenter', show); a.addEventListener('focus', show);
+  });
+
+  /* Recent jobs: photos the owner posts from the admin on their phone appear first in the gallery.
+     With none posted, the standard gallery stays exactly as built. */
+  var jobGrid = $('#work .work');
+  if (jobGrid && window.fetch) {
+    fetch('/api/jobs?limit=12').then(function (r) { return r.ok ? r.json() : { jobs: [] }; }).then(function (d) {
+      var jobs = (d && d.jobs) || [];
+      if (!jobs.length) return;
+      var frag = document.createDocumentFragment();
+      jobs.forEach(function (j) {
+        var label = [j.service, j.suburb].filter(Boolean).join(' in ');
+        var alt = j.caption || label || 'Recent job';
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'work__job';
+        b.setAttribute('data-full', j.url); b.setAttribute('data-alt', alt); b.setAttribute('aria-label', 'Enlarge: ' + alt);
+        var im = document.createElement('img'); im.src = j.url; im.alt = alt; im.loading = 'lazy';
+        var cap = document.createElement('span'); cap.className = 'work__cap';
+        var when = new Date(j.createdAt);
+        cap.textContent = (label || 'Recent job') + (isNaN(when) ? '' : ' · ' + when.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }));
+        b.appendChild(im); b.appendChild(cap); frag.appendChild(b);
+      });
+      jobGrid.insertBefore(frag, jobGrid.firstChild);
+      var lede = $('#work .lede');
+      if (lede) lede.textContent = jobs.length >= 6 ? 'Posted straight from the job.' : 'Our latest jobs first, posted straight from the job, followed by example photos of the kind of work we do.';
+      if (jobs.length >= 6) $$('#work .work > button:not(.work__job)').forEach(function (b) { b.remove(); });
+    }).catch(function () { /* keep the standard gallery */ });
   }
 
   /* Lead forms post to the same-origin Express backend */

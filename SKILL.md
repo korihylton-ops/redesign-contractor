@@ -5,7 +5,7 @@ description: Rebuild a contractor's website (electrician, plumber, HVAC, roofer,
 
 # /redesign-contractor <url>
 
-Turn an existing contractor website into a premium site: branded, animated, with a working lead backend and AI chat, covering every suburb and service. The engine is fixed (`template/`). What changes per client is one file, `content/config.json`, plus the client's scraped text and photos. The look is one of six themes (`classic`, `floodlit`, `harbour`, `amber`, `slate`, `studio`), chosen per client in Phase 3 to fit their brand, photos and trade, so clients do not all get the same design.
+Turn an existing contractor website into a premium site: branded, animated, with a working lead backend and AI chat, covering every suburb and service. The engine is fixed (`template/`). What changes per client is `content/config.json`, the client's scraped text and photos, and **the client's own design**: every build gets a custom home layout and theme made from that client's brand (Phase 3b, `docs/DESIGN.md`), filled with real photos. The six stock themes (`classic`, `floodlit`, `harbour`, `amber`, `slate`, `studio`) are only the starting floor. Shipping a stock theme with generated illustrations was rejected by the owner as "generic"; no two clients may look alike.
 
 **SKILL_DIR** is the folder containing this file. All script paths below are relative to it.
 
@@ -17,7 +17,8 @@ Turn an existing contractor website into a premium site: branded, animated, with
 4. **Secrets never go in git, in the config, in logs or in chat replies.** API keys live only in the project's `.env` (gitignored). If a key is in your context, use it, do not echo it. Tell the user to rotate any key they pasted into a chat.
 5. **Deployment is part of the job.** Every finished site goes to a NEW PRIVATE GitHub repo, is uploaded to the user's Contabo server, and you return the live URL. Never make a client repo public. Demo sites are `noindex` so they do not compete with the client's real site.
 6. **Never copy another business's copy.** Write original text.
-7. **Real photos first; generated images are illustrative.** Use the client's own photos. Only when a needed image cannot be found, generate it (Phase 3). Generated images must never be presented as real jobs, a real team or real people: prompts exclude people, text and logos, the site labels a generated gallery as illustrative, and you list every generated file in your report.
+7. **Real photos first, and lots of them; generated images are the last resort.** Use the client's own photos, then free stock photos (`scripts/stock-photos.mjs`, see `docs/DESIGN.md`) until the site has 40 or more real photos. Only when neither works, generate images (Phase 3). Generated images must never be presented as real jobs, a real team or real people: prompts exclude people, text and logos, the site labels a generated gallery as illustrative, and you list every generated file in your report.
+8. **Every client looks different.** Do the custom design pass (Phase 3b) on every build, read `~/.redesign-contractor/designs.log` first, and never repeat a recent client's fonts, hero treatment or shape language. Still a normal business website: never a concept layout.
 
 ## Inputs
 
@@ -60,7 +61,16 @@ node scripts/photos.mjs collect --in <work>/_scrape --out <work>/_scrape
 - **Choose the theme** by following `docs/THEMES.md`: score all six themes on brand fit, photo strength, trade and buyer, and how big an upgrade it is over the old site, then take the highest total (least recently used on a tie, from `~/.redesign-contractor/themes-used.log`). Set `brand.theme` and a one-sentence `brand.themeReason`. Leave `brand.fonts` out to use the theme's font pairing, unless the client has distinctive brand fonts worth keeping. Every theme is a normal business website; never invent a concept layout.
 - View every `contact-sheet-N.png` with the Read tool. Pick real job photos: a sharp hero over 100KB, an about/team photo, a wide feature photo, at least 12 gallery photos and one photo per featured service. For the `floodlit`, `slate` and `studio` themes also pick a landscape photo at least 1600px wide as `hero-wide` (set `images.heroWide`); if the client has no such photo, choose a different theme. **Reject** photos with baked-in text, marketing graphics, stock imagery, screenshots and blurry shots.
 - Write a map of candidate id to name and run `node scripts/photos.mjs pick --from <work>/_scrape/candidates --map map.json --out <project>/public/images`. Copy the logo to `public/images/`.
-- **If usable photos are missing** (site has too few, they are unusable, or the site was blocked), fill the gaps after Phase 6 with `node scripts/generate-images.mjs <project>`. It generates only the images the config references that do not exist yet. With `OPENAI_API_KEY` set it makes AI photographs (no people, text or logos); with no key it renders clean brand-coloured illustrations and a text logo. It records what it generated in `config.images.generatedFiles`, and the site then labels the gallery as illustrative. Replace generated images with real photos whenever they become available.
+- **If usable photos are missing** (fewer than about 25 good client photos, or the site was blocked), fill the gaps with real stock photos first: collect Unsplash ids in Chrome, then `node scripts/stock-photos.mjs sheets` and `pick` (full steps and reject rules in `docs/DESIGN.md`). Also check the client's Facebook and Google Business photos. Only if that still leaves gaps, run `node scripts/generate-images.mjs <project>` after Phase 6. It generates only the images the config references that do not exist yet. With `OPENAI_API_KEY` set it makes AI photographs (no people, text or logos); with no key it renders clean brand-coloured illustrations and a text logo. It records what it generated in `config.images.generatedFiles`, and the site then labels the gallery as illustrative. Replace generated images with real photos whenever they become available.
+
+## Phase 3b: Custom design pass (every build)
+
+Follow `docs/DESIGN.md`. In short:
+
+1. Read the last 5 lines of `~/.redesign-contractor/designs.log`; this build must differ from each on at least three of font, base colour, hero, shape language and section rhythm.
+2. Invoke `frontend-design:frontend-design` and write the plan (colour tokens from the client's brand, a font pairing not used recently, shape language, hero wireframe, one signature animation tied to the trade). Critique it against the generic tells and revise.
+3. Build `<project>/public/assets/themes/<name>.css` and `<project>/lib/home-custom.js` (the engine picks both up; `examples/custom-home/` shows the hooks). Set `brand.theme` to the new name and `brand.fonts` to the pairing.
+4. Screenshot desktop and mobile and look at every shot before moving on.
 
 ## Phase 4: Service area
 
@@ -108,7 +118,7 @@ node scripts/click-audit.mjs --url http://localhost:3000   # must end 0 FAILED
 
 `qa.mjs` proves the machinery works. `click-audit.mjs` proves every button a visitor can see actually does something a visitor can see: it clicks every anchor and button on every page in the sitemap and judges the result, not the markup. It fails an in-page anchor whose target does not exist, an internal link that lands on a 404, and — deliberately — any prominent `.btn` whose href is `mailto:`, because on a device with no mail client that button produces no navigation, no error and no feedback at all, which is exactly how a dead button looks. Never report a site as working on the strength of a link existing, a 200 status or an href that parses; run this and read the summary.
 
-Open the screenshots in `<project>/qa-shots/` and check them yourself: hero, services selector, bento, reviews, a suburb page, an article, the chat, the admin. Fix anything broken before reporting. If something fails, diagnose the cause before changing code.
+`qa.mjs` also fails any visible button whose text has under 3:1 contrast with its background (unreadable buttons look dead to visitors). Open the screenshots in `<project>/qa-shots/` and check them yourself: hero, services, reviews, a suburb page, an article, the chat, the admin. Compare the home page with the last client in `designs.log`: if they look alike, redo Phase 3b. Fix anything broken before reporting. If something fails, diagnose the cause before changing code.
 
 After deploying (Phase 9), run `node scripts/click-audit.mjs --url https://<the live host>` as well. Local passing does not prove the deployed build is the one you fixed.
 
@@ -141,8 +151,9 @@ If nothing answers, diagnose (`docker logs <slug>` on the server, DNS) before re
 Tell the user, briefly and honestly:
 
 - **The live link, `https://<slug>.<base domain>`, first and prominently** (the user shows it to the client), then the admin URL and password and the private repo URL. Say that the DeepSeek key is on the server in `.env` (or that chat is on the scripted fallback).
-- The theme you chose and why (one sentence), and that switching to another theme is a one-line change to `brand.theme` plus a redeploy. Append `<date> <slug> <theme>` to `~/.redesign-contractor/themes-used.log`.
-- Which images were generated rather than taken from the client's site.
+- The design you made and why (one sentence: fonts, hero, signature moment). Append `<date> <slug> <theme>` to `~/.redesign-contractor/themes-used.log` and the full design line to `~/.redesign-contractor/designs.log`.
+- **Post a job:** tell the user the owner can post job photos from their phone (admin, "Post a job"); they appear first in "Recent jobs", so the site never depends on uploading through a CMS.
+- Which images are stock photos (see `public/images/photos/CREDITS.json`) or generated, rather than the client's own.
 - What was carried over (pages, words, suburbs, services) and the verification results.
 - A **CONFIRM list**: every price, rate, licence, offer or claim that came from an ambiguous source or that you could not verify (for example conflicting prices on the old site, placeholder upgrade offers, an unlicensed trade).
 - What is not built: PayPal and Google Calendar sync (shown in Settings as "Not built yet"), and anything skipped.
@@ -153,8 +164,8 @@ When the client is ready to go live on their own domain, follow `docs/DEPLOY.md`
 
 ## What the engine provides (do not rebuild it)
 
-Design: six themes (see `docs/THEMES.md`), each branded from the client's colours, enterprise motion (Motion library), background paths hero, marquee, count-up stats, bento with spotlight cards, timeline, scroll-expanding media, testimonial columns, services selector, lightbox gallery, suburb search, FAQ.
+Design: a per-client custom theme and home layout hook (`docs/DESIGN.md`), six stock themes as a base (see `docs/THEMES.md`), each branded from the client's colours, enterprise motion (Motion library), background paths hero, marquee, count-up stats, bento with spotlight cards, timeline, scroll-expanding media, testimonial columns, services selector, lightbox gallery, suburb search, FAQ.
 
-Backend (Express, one container): lead form, admin dashboard (leads and bookings, calendar with blocked days, chats with transcripts, traffic, conversions by source, settings), Stripe deposit links and Resend emails when keys are set, page tracking, security headers, rate limits, sitemap and robots, SEO schema, 301-safe URLs.
+Backend (Express, one container): lead form, a phone-friendly **Post a job** feed (owner snaps a photo in the admin, it appears first in the home page's recent jobs; photos persist in `data/jobs/`), admin dashboard (leads and bookings, calendar with blocked days, chats with transcripts, traffic, conversions by source, settings), Stripe deposit links and Resend emails when keys are set, page tracking, security headers, rate limits, sitemap and robots, SEO schema, 301-safe URLs.
 
 Chat: DeepSeek with a `save_lead` tool that writes leads straight to the admin, call and text buttons, a configurable upgrade offer, conversion tracking on every call, text and quote click, and a scripted fallback.

@@ -1,5 +1,7 @@
 # Themes: picking the look for each client
 
+> **These six themes are the starting floor, not the finished design.** Every build then gets its own custom theme and home layout made from the client's brand: see `DESIGN.md` (Phase 3b). A stock theme with generated illustrations was rejected by the owner as generic.
+
 Every site uses the same engine, sections, SEO pages, chat and admin. A theme changes only the look: colours (light or dark), fonts, the hero treatment and the styling of cards and buttons. Set it with `brand.theme` in `content/config.json`. If `brand.fonts` is left out, the theme's own font pairing is used.
 
 Themes are deliberately normal business websites. Do not invent concept layouts (themed pages, gimmick heroes); the owner has rejected those. Variety comes from the six themes below.

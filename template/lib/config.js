@@ -88,7 +88,17 @@ const THEMES = {
   studio: { displayFamily: 'DM Serif Display', displayCss: 'DM+Serif+Display', bodyFamily: 'Figtree', bodyCss: 'Figtree:wght@400;500;600;700' },
 };
 const brand = Object.assign({ primary: '#0bb2ea', ink: '#0c1e24', hazard: '#ffb000', surface: '#f4f8f9' }, cfg.brand || {});
+// A client-specific theme (docs/DESIGN.md) is any name with its own public/assets/themes/<name>.css.
+// It gets its fonts from brand.fonts, so it never inherits a stock theme's pairing.
+const customTheme = typeof brand.theme === 'string' && /^[a-z0-9-]+$/.test(brand.theme) && !Object.prototype.hasOwnProperty.call(THEMES, brand.theme)
+  && fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'themes', brand.theme + '.css'));
+if (customTheme) {
+  if (!brand.fonts || !brand.fonts.displayFamily) console.warn(`brand.theme "${brand.theme}" is a custom theme but brand.fonts is not set; it will fall back to the classic fonts. Set brand.fonts (docs/DESIGN.md).`);
+  THEMES[brand.theme] = Object.assign({}, THEMES.classic, brand.fonts || {});
+}
+else if (brand.theme && !Object.prototype.hasOwnProperty.call(THEMES, brand.theme)) console.warn(`brand.theme "${brand.theme}" has no public/assets/themes/${brand.theme}.css; using "classic".`);
 brand.theme = Object.prototype.hasOwnProperty.call(THEMES, brand.theme) ? brand.theme : 'classic';
+brand.customTheme = !!customTheme;
 // Amber Bold puts dark text on the accent colour; a dark accent would be unreadable, so fall back.
 if (brand.theme === 'amber' && contrast(brand.hazard, brand.ink) < 4.5) {
   console.warn(`brand.theme "amber" needs a light accent (hazard ${brand.hazard} vs ink ${brand.ink} is below 4.5:1); using "harbour".`);

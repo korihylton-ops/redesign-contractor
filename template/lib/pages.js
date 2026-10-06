@@ -7,6 +7,12 @@ const { business: B, trade, T } = C;
 const { img, callBtn, textBtn, head, header, footer, quoteSection, faqHtml, localBusinessLd, faqLd, areasHtml } = L;
 
 const cp = C.copy;
+
+/* Optional per-client home layout: lib/home-custom.js exporting body(). See docs/DESIGN.md. */
+const customHome = (() => {
+  const file = require('path').join(__dirname, 'home-custom.js');
+  return require('fs').existsSync(file) ? require(file) : null;
+})();
 const sec = (k) => Object.assign({}, cp[k] || {});
 const t = (s, extra) => esc(T(s, extra));
 
@@ -104,7 +110,7 @@ ${footer()}`;
 }
 
 const crumbsTo = (parts) => parts.map((p, i) => (p.href && i < parts.length - 1 ? `<a href="${p.href}">${esc(p.text)}</a>` : esc(p.text))).join(' / ');
-const rateLine = () => (B.standardRate ? `Rates: $${B.standardRate} per hour standard${B.afterHoursRate ? `, $${B.afterHoursRate} per hour after hours` : ''}. Fixed-price quotes are given in writing before work starts.` : 'Fixed-price quotes are given in writing before work starts.');
+const rateLine = () => (B.standardRate ? `Rates: $${B.standardRate} per hour standard${B.afterHoursRate ? `, $${B.afterHoursRate} per hour after hours` : ''}. ` : 'You get a clear quote before any work starts.');
 
 /* ---------- Home ---------- */
 function home() {
@@ -261,10 +267,14 @@ ${C.faqs.length ? `<section class="section section--paper" id="faq">
 </section>` : ''}
 ${item ? proseSection(item, { solo: false, heading: T(sec('longform').heading || 'The full guide') }) : ''}`;
 
+  // A client-specific home layout (docs/DESIGN.md) replaces the stock sections; the original text still follows it.
+  const pageBody = customHome
+    ? customHome.body() + (item ? proseSection(item, { solo: false, heading: T(sec('longform').heading || 'The full guide') }) : '')
+    : body;
   return head({ title: meta.title, description: meta.description, path: '/', jsonld: [localBusinessLd()].concat(C.faqs.length ? [faqLd(C.faqs)] : []) }) + `
 <body>
 ${header()}
-<main id="main">${body}
+<main id="main">${pageBody}
 ${quoteSection()}
 </main>
 ${footer()}`;
@@ -302,7 +312,7 @@ function suburbPage(slug) {
   const extra = { suburb: sub.name };
   const intro = sub.intro || T(region.outside ? (sc.introOutside || 'We service {{suburb}} for larger jobs and scheduled work. Call {{phone}} to check availability and book.') : (sc.intro || 'Licensed local {{nounPlural}} for {{suburb}}. Fast, upfront pricing and work done properly.'), extra);
   const meta = metaFor(item, T(sc.title || '{{Noun}} {{suburb}} | {{name}}', extra), T(sc.description || '{{Noun}} in {{suburb}}. {{name}}. Call {{phone}}.', extra));
-  const ticks = credentials.map((c) => `<li>${esc(c.title)}</li>`).join('') + (B.standardRate ? `<li>$${B.standardRate} per hour, no callout fee</li>` : '') + '<li>Fixed-price written quotes for most jobs</li>';
+  const ticks = credentials.map((c) => `<li>${esc(c.title)}</li>`).join('') + (B.standardRate ? `<li>$${B.standardRate} per hour, no callout fee</li>` : '') + '<li>A clear quote before any work starts</li>';
   const body = `<section class="section"><div class="wrap two-col">
     <div><h2>${esc(cap(trade.noun))} services in ${esc(sub.name)}</h2><ul class="link-list">${C.services.map((x) => `<li><a href="/${x.slug}">${esc(x.name)}</a></li>`).join('')}</ul></div>
     <div><h2>Why ${esc(sub.name)} customers call ${esc(B.name)}</h2><ul class="ticks">${ticks}</ul>${B.firstJobDiscount ? `<p>$${B.firstJobDiscount} off your first job.</p>` : ''}</div>
