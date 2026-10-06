@@ -308,3 +308,10 @@ p { margin: 0 0 1em; max-width: 68ch; }
 .stock[hidden] { display: none; }
 .stock__more { margin-top: 24px; }
 @media (max-width: 800px) { .product__grid, .reserve__row { grid-template-columns: 1fr; } }
+
+/* Business name beside an icon-only logo (images.logoHasName: false, the default) */
+.head__logo { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
+.head__logo:hover { color: inherit; }
+.head__name { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; line-height: 1.1; letter-spacing: -0.01em; white-space: nowrap; }
+.foot__name { display: block; margin: -4px 0 14px; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: #fff; }
+@media (max-width: 420px) { .head__name { font-size: 1rem; white-space: normal; max-width: 12ch; } }

@@ -39,6 +39,7 @@ const html = await p.content();
 ok('no unresolved {{tokens}} on home', !/\{\{\w+\}\}/.test(html), (html.match(/\{\{\w+\}\}/g) || []).slice(0, 3).join(','));
 ok('no duplicate ids on home', await p.evaluate(() => { const ids = [...document.querySelectorAll('[id]')].map((e) => e.id); return ids.length === new Set(ids).size; }));
 ok('hero image loaded', await p.evaluate(() => { const i = document.querySelector('.hero__photo img, [data-hero-photo] img, main img[fetchpriority="high"]'); return !i || (i.complete && i.naturalWidth > 0); }));
+ok('business name visible in the header', !!(cfg.images && cfg.images.logoHasName) || (await p.evaluate((n) => { const h = document.querySelector('.head'); return !!h && h.innerText.includes(n); }, cfg.business.name)), 'icon-only logo with no name: leave images.logoHasName unset so the engine prints the name');
 ok('logo loaded', await p.evaluate(() => { const i = document.querySelector('.head__logo img'); return i.complete && i.naturalWidth > 0; }));
 ok('brand colour applied', (await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cyan').trim().toLowerCase())) === String(cfg.brand.primary).toLowerCase());
 ok('Motion library loaded', await p.evaluate(() => !!window.Motion));

@@ -93,7 +93,7 @@ function header() {
 <div class="progress" aria-hidden="true"><i></i></div>
 <header class="head">
   <div class="wrap head__row">
-    <a class="head__logo" href="/" aria-label="${esc(B.name)} home"><img src="${logo}" alt="${esc(B.name)}" height="44"></a>
+    <a class="head__logo" href="/" aria-label="${esc(B.name)} home">${C.images.logoHasName ? `<img src="${logo}" alt="${esc(B.name)}" height="44">` : `<img src="${logo}" alt="" height="44"><span class="head__name">${esc(B.name)}</span>`}</a>
     <nav class="nav" id="nav" aria-label="Main">
       ${navItems().map(([href, label]) => `<a href="${href}">${esc(label)}</a>`).join('\n      ')}
     </nav>
@@ -140,8 +140,8 @@ function footer() {
   <div class="wrap">
     <div class="foot__grid">
       <div>
-        <span class="foot__logo"><img src="${img(C.images.logo || 'logo.webp')}" alt="${esc(B.name)}" height="40"></span>
-        <p>${esc(B.legalName)}${hasAddress ? '<br>' + esc(fullAddress) : ''}${HAS_PHONE ? `<br><a href="${B.phoneHref}" data-track="call" data-src="footer">${esc(B.phone)}</a>` : ''}<br><a href="mailto:${esc(B.email)}">${esc(B.email)}</a></p>
+        <span class="foot__logo"><img src="${img(C.images.logo || 'logo.webp')}" alt="${C.images.logoHasName ? esc(B.name) : ''}" height="40"></span>${C.images.logoHasName ? '' : `<span class="foot__name">${esc(B.name)}</span>`}
+        <p>${[(!C.images.logoHasName && B.legalName === B.name) ? '' : esc(B.legalName), hasAddress ? esc(fullAddress) : '', HAS_PHONE ? `<a href="${B.phoneHref}" data-track="call" data-src="footer">${esc(B.phone)}</a>` : '', `<a href="mailto:${esc(B.email)}">${esc(B.email)}</a>`].filter(Boolean).join('<br>')}</p>
       </div>
       <div>
         <h3>Services</h3>
