@@ -18,7 +18,7 @@ Turn an existing contractor website into a premium site: branded, animated, with
 5. **Deployment is part of the job.** Every finished site goes to a NEW PRIVATE GitHub repo, is uploaded to the user's Contabo server, and you return the live URL. Never make a client repo public. Demo sites are `noindex` so they do not compete with the client's real site.
 6. **Never copy another business's copy.** Write original text.
 7. **Real photos first, and lots of them; generated images are the last resort.** Use the client's own photos, then free stock photos (`scripts/stock-photos.mjs`, see `docs/DESIGN.md`) until the site has 40 or more real photos. Only when neither works, generate images (Phase 3). Generated images must never be presented as real jobs, a real team or real people: prompts exclude people, text and logos, the site labels a generated gallery as illustrative, and you list every generated file in your report.
-8. **Every client looks different.** Do the custom design pass (Phase 3b) on every build, read `~/.redesign-contractor/designs.log` first, and never repeat a recent client's fonts, hero treatment or shape language. Still a normal business website: never a concept layout.
+8. **Every client looks different, and the front page has wow factor.** Do the custom design pass (Phase 3b) on every build, even when the user only types the command with a URL and says nothing about design. Read `~/.redesign-contractor/designs.log` and `~/.redesign-contractor/design-decisions.md` first, sketch three concepts, score them, record the chosen one in `design-decisions.md`, and never repeat a past client's fonts, hero treatment or shape language. Still a normal business website: never a concept layout.
 
 ## Inputs
 
@@ -156,7 +156,7 @@ If nothing answers, diagnose (`docker logs <slug>` on the server, DNS) before re
 Tell the user, briefly and honestly:
 
 - **The live link, `https://<slug>.<base domain>`, first and prominently** (the user shows it to the client), then the admin URL and password and the private repo URL. Say that the DeepSeek key is on the server in `.env` (or that chat is on the scripted fallback).
-- The design you made and why (one sentence: fonts, hero, signature moment). Append `<date> <slug> <theme>` to `~/.redesign-contractor/themes-used.log` and the full design line to `~/.redesign-contractor/designs.log`.
+- The design you made and why (one sentence: fonts, hero, signature moment). Append `<date> <slug> <theme>` to `~/.redesign-contractor/themes-used.log` and the full design line to `~/.redesign-contractor/designs.log`. Make sure the build's entry in `design-decisions.md` is complete; when the user gives a verdict, record it there in their words.
 - **Post a job:** tell the user the owner can post job photos from their phone (admin, "Post a job"); they appear first in "Recent jobs", so the site never depends on uploading through a CMS.
 - Which images are stock photos (see `public/images/photos/CREDITS.json`) or generated, rather than the client's own.
 - What was carried over (pages, words, suburbs, services) and the verification results.
