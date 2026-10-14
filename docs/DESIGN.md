@@ -47,6 +47,9 @@ old design". The redo was approved as "much better". The difference, as principl
   glass panels, light and glow on real objects, slow drift on the hero photo. Build interactive moments on real
   photos (for example, light up the lamps on a photo of the client's own product), not on line-art diagrams.
   Use the colours of the trade's world (marine work wants blue), with the brand colour as the accent.
+  But a clear interactive diagram can still be the hero's wow moment (the owner preferred it over a photo
+  hero). Never put the old site's own hero photo behind the new hero (it reads as "the same site"), and
+  never stretch a photo full-bleed unless it is sharp at 1440px or wider (it looks fuzzy).
 
 ## Beat the old site, section by section
 
