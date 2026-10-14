@@ -42,6 +42,12 @@ old design". The redo was approved as "much better". The difference, as principl
 - **Interactive trade moments below the fold** (a checklist that fills a progress ring, a thermal lens),
   so the page keeps rewarding scrolling.
 
+- **Real, not flat.** The owner rejected a pale, line-drawn "chart" look as a "generic 2D cartoon website" and
+  asked for something that looks real. Lead with full-bleed real photography, then add depth: layered shadows,
+  glass panels, light and glow on real objects, slow drift on the hero photo. Build interactive moments on real
+  photos (for example, light up the lamps on a photo of the client's own product), not on line-art diagrams.
+  Use the colours of the trade's world (marine work wants blue), with the brand colour as the accent.
+
 ## Beat the old site, section by section
 
 The finished site has to be better than the old one **in every section**, not just overall. LAQ was "90%
