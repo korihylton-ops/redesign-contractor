@@ -49,10 +49,8 @@ fs.copyFileSync(cfgPath, path.join(out, 'content', 'config.json'));
 if (args.images) copyDir(path.resolve(args.images), path.join(out, 'public', 'images'));
 if (args.pages) fs.copyFileSync(path.resolve(args.pages), path.join(out, 'content', 'site', 'pages.json'));
 
-/* .env: secrets come from the environment, admin password is random unless supplied */
-const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const randomPw = () => Array.from(crypto.randomBytes(16)).map((x) => alphabet[x % alphabet.length]).join('');
-const password = typeof args.password === 'string' ? args.password : randomPw();
+/* .env: secrets come from the environment. Admin password is always the company name, all lowercase, one word, then 1 (e.g. laqelectrical1) unless supplied */
+const password = typeof args.password === 'string' ? args.password : String((cfg.business && cfg.business.name) || 'site').toLowerCase().replace(/[^a-z0-9]+/g, '') + '1';
 const env = [
   '# Secrets. Never commit this file.',
   'ADMIN_PASSWORD_HASH=' + crypto.createHash('sha256').update(password).digest('hex'),

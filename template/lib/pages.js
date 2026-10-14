@@ -71,7 +71,22 @@ function aside(item, toc, src) {
   </aside>`;
 }
 
+/* Blocks of an original page that the rest of the page does not already carry, word for word. */
+function leftoverOf(item, html) {
+  const decode = (s) => s.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const norm = (s) => decode(String(s || '')).replace(/<[^>]+>/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').replace(/ ([,.;:!?])/g, '$1').replace(/(\d) (?=\d)/g, '$1').trim().toLowerCase();
+  const have = norm(html);
+  const blocks = item.blocks.filter((b) => {
+    if (b.type === 'table') return b.rows.some((r) => r.some((c) => !have.includes(norm(c))));
+    if (b.type === 'review') return !have.includes(norm(b.text)) || !have.includes(norm(b.name));
+    const t = norm(b.html);
+    return t && !have.includes(t);
+  });
+  return blocks.length ? Object.assign({}, item, { blocks }) : null;
+}
+
 function proseSection(item, { solo, heading }) {
+  if (!item) return '';
   const { html, toc } = renderBlocks(item.blocks, { h1: solo ? 'demote' : 'drop', src: 'article' });
   return `<section class="section${solo ? ' section--paper' : ''}" id="details"><div class="wrap article">
     <div class="prose">${heading ? `<p class="prose__label">${esc(heading)}</p>` : ''}${html}</div>
@@ -269,9 +284,11 @@ ${C.faqs.length ? `<section class="section section--paper" id="faq">
 </section>` : ''}
 ${item ? proseSection(item, { solo: false, heading: T(sec('longform').heading || 'The full guide') }) : ''}`;
 
-  // A client-specific home layout (docs/DESIGN.md) replaces the stock sections; the original text still follows it.
+  // A client-specific home layout (docs/DESIGN.md) replaces the stock sections. The original text only
+  // follows it for whatever the layout does not already show, so the page never ends in a second,
+  // unstyled copy of everything above it. Put the old text into designed sections; this is the fallback.
   const pageBody = customHome
-    ? customHome.body() + (item ? proseSection(item, { solo: false, heading: T(sec('longform').heading || 'The full guide') }) : '')
+    ? customHome.body() + (item ? proseSection(leftoverOf(item, customHome.body() + quoteSection() + footer()), { solo: false, heading: T(sec('longform').heading || 'The full guide') }) : '')
     : body;
   return head({ title: meta.title, description: meta.description, path: '/', jsonld: [localBusinessLd()].concat(C.faqs.length ? [faqLd(C.faqs)] : []) }) + `
 <body>

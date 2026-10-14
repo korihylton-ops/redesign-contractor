@@ -7,6 +7,63 @@ own brand, filled with real photos.
 
 Every build therefore does this pass after Phase 3 (brand and photos) and before scaffolding.
 
+## The quality bar: why LAQ Electrical worked (2026-10-07)
+
+The owner called the LAQ Electrical build "a lot better than what you've been doing recently". Copy the
+**reasons** it worked, never its look. Every client is different: reassess their brand, trade, buyers and
+old site from scratch, and decide what fits them. If a new site looks like LAQ in another colour, it failed.
+
+What made it good, as principles to re-apply in a new way each time:
+
+- **The design grew out of the client's own logo.** LAQ's ring and lightning bolt became the photo frame,
+  the hero animation and the avatar rings; the diagonal of the "A" became the chamfered corners. Find the
+  equivalent in each new client's brand.
+- **A metaphor from the trade, not from web design.** Services drawn as an electrician's single-line
+  diagram. Each trade has its own (a plumber's pipe run, a roofer's pitch, a landscaper's site plan); pick one
+  only if it makes the content easier to scan, never as decoration.
+- **Real people and real words.** Luke and Kelly's own photos, names, roles and bios; the client's own
+  sentences and licence numbers up front. No invented claims, ratings or stats.
+- **Every action within reach.** Call, text a photo of the job, and ask for a quote in the hero, again after
+  the reviews and in every section that ends a thought.
+- **One signature moment, then calm.** The ring charging and the bolt flashing once; everything else quiet.
+
+## The wow bar: Bladz Electrical v2 (approved 2026-10-14)
+
+The first Bladz build was rejected as "only slightly better than the old website ... generic and similar to
+old design". The redo was approved as "much better". The difference, as principles (never copy its look):
+
+- **The first screen carries the pitch.** Spend most of the design effort there. Dark or light, it must look
+  nothing like the old site's hero: a different photo or a very different crop, a different composition.
+- **Layered, not split.** Photo bleeding off one edge with a mask fade, a giant brand glyph behind a huge
+  headline, floating cards over it. Never a plain headline-left / photo-right split.
+- **A signature animation people notice**, tied to the trade and the logo, played once on load.
+- **Live, useful detail in the hero:** real review quotes, licence, a live countdown or number, an
+  interactive helper (what do you need tabs, does-you-come-to-my-suburb checker).
+- **Interactive trade moments below the fold** (a checklist that fills a progress ring, a thermal lens),
+  so the page keeps rewarding scrolling.
+
+## Beat the old site, section by section
+
+The finished site has to be better than the old one **in every section**, not just overall. LAQ was "90%
+better", but its testimonials were plain text boxes, worse than the old site's photo-backed quote cards,
+and the page ended in a wall of carried-over text. Both were rejected. So:
+
+1. **Screenshot the old site's version of each section** (hero, services, about/team, testimonials or
+   reviews, contact) and put it beside ours. If theirs has photos, quote marks, cards, stars, a background
+   image or anything else ours lacks, ours is not done.
+2. **Testimonials are never just words.** Give them structure and imagery that suits the brand, for example:
+   a photo or textured backdrop, a large quote mark, the opening line pulled out big, the client's initials
+   or photo, their role or suburb, and the jobs they mention linked to those service pages. Show stars only
+   when the reviewer actually gave a rating (do not add 5 stars to a review that has none, and do not call it a
+   Google review unless it is). With few reviews, make each one bigger; with many, use a scrolling row or
+   grid that still looks designed.
+3. **No wall of text anywhere, especially at the bottom.** Put the old site's text into the designed sections:
+   its section titles become labels, team bios go on the team cards, licence lines go near the about or
+   contact block. The engine only appends `proseSection` for home-page text that appears nowhere else on the
+   page, so whatever is still left at the bottom is a to-do list: place it properly. After the build, the home
+   page should have no `#details` block, or at most a short one. `verify-text.mjs` must still pass at 100%.
+4. Look at the bottom third of the page as closely as the hero. That is where the last few builds got lazy.
+
 ## Hard limits (unchanged)
 
 - It is still a normal business website: header, hero, services, why us, reviews, recent jobs, process,
@@ -28,6 +85,18 @@ Every build therefore does this pass after Phase 3 (brand and photos) and before
 Read the last 5 lines. This build must differ from each of them on at least three of: display font, base
 colour (light or dark, warm or cool), hero treatment, shape language (sharp, rounded, arch, organic),
 section rhythm. Never reuse a font pairing from the last 5 builds.
+
+Then read `~/.redesign-contractor/design-decisions.md`: the register of every concept weighed, chosen and
+rejected, the owner's verdict on each, the hero directions already used and a list of unused ones. The
+owner's rule: "change the design every time ... so nothing is ever the same".
+
+## 1b. Decide between three concepts and record the decision
+
+Sketch three different hero concepts for this client, each grown from their brand, trade and photos, and each
+different from every used direction in the register on at least three axes. Score each 1 to 5 on wow on the
+first screen, fit to the client, distance from the old site, distance from past builds, and use of real
+photos. Take the highest total. Write the entry in `design-decisions.md` (concepts, scores, choice, why,
+verdict "pending") before building, and move the chosen direction into its "Directions already used" table.
 
 ## 2. Run the frontend-design skill and write the plan
 
@@ -96,11 +165,13 @@ jobs through **Post a job** in the admin (those appear first automatically).
 ## 5. Check it with your own eyes
 
 Screenshot the home page and one service, suburb and guide page at 1440px and 390px, and read every
-screenshot. Look for: unreadable buttons, text touching borders, photos that contradict the copy, empty
+screenshot. Then do the side-by-side from "Beat the old site, section by section" above: every section,
+testimonials and the bottom of the page included, must clearly beat the old site's version. Look for: unreadable buttons, text touching borders, photos that contradict the copy, empty
 columns, anything that looks like a previous client's site. `qa.mjs` now fails any button whose text has
 less than 3:1 contrast with its background; fix those in the theme CSS.
 
 ## 6. Record it
 
 Append one line to `~/.redesign-contractor/designs.log` in the format above, and the usual
-`<date> <slug> <theme>` line to `themes-used.log`.
+`<date> <slug> <theme>` line to `themes-used.log`. When the owner reacts, update the build's verdict in
+`design-decisions.md` with their words (approved or rejected, and why), so the next build learns from it.

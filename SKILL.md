@@ -67,10 +67,11 @@ node scripts/photos.mjs collect --in <work>/_scrape --out <work>/_scrape
 
 Follow `docs/DESIGN.md`. In short:
 
-1. Read the last 5 lines of `~/.redesign-contractor/designs.log`; this build must differ from each on at least three of font, base colour, hero, shape language and section rhythm.
+1. Read the last 5 lines of `~/.redesign-contractor/designs.log` and all of `~/.redesign-contractor/design-decisions.md`; this build must differ from each past build on at least three of font, base colour, hero, shape language and section rhythm. Sketch three hero concepts, score them, pick one and record the decision in `design-decisions.md` before building (`docs/DESIGN.md` 1b). The front page must have wow factor (see "The wow bar" in `docs/DESIGN.md`).
 2. Invoke `frontend-design:frontend-design` and write the plan (colour tokens from the client's brand, a font pairing not used recently, shape language, hero wireframe, one signature animation tied to the trade). Critique it against the generic tells and revise.
 3. Build `<project>/public/assets/themes/<name>.css` and `<project>/lib/home-custom.js` (the engine picks both up; `examples/custom-home/` shows the hooks). Set `brand.theme` to the new name and `brand.fonts` to the pairing.
 4. Screenshot desktop and mobile and look at every shot before moving on.
+5. Read "The quality bar" and "Beat the old site, section by section" in `docs/DESIGN.md`. Apply the reasons LAQ Electrical worked, not its look, and reassess for each client. Every section must beat the old site's version, testimonials especially (never plain text boxes). Fold the old text into designed sections so the page never ends in a wall of words.
 
 ## Phase 3c: Shop (when the business also sells products)
 
@@ -143,7 +144,7 @@ node scripts/deploy.mjs <project> --dry-run      # optional preview: checks the 
 node scripts/deploy.mjs <project>
 ```
 
-It scans tracked files for secrets and refuses to push if any are found, creates a new **private** repo `<owner>/<slug>-site`, uploads the project (with its `.env`, over SSH, never via git) to `/opt/sites/<slug>`, builds the container behind Traefik, generates a fresh strong admin password, and verifies over HTTPS. Read its output: it lists which URLs are LIVE. There are two hostnames:
+It scans tracked files for secrets and refuses to push if any are found, creates a new **private** repo `<owner>/<slug>-site`, uploads the project (with its `.env`, over SSH, never via git) to `/opt/sites/<slug>`, builds the container behind Traefik, sets the admin password to the company name, all lowercase, as one word plus 1 (e.g. `laqelectrical1`), and verifies over HTTPS. Read its output: it lists which URLs are LIVE. There are two hostnames:
 
 - **`https://<slug>.<base domain>` is the link to give the user.** Every deploy creates this subdomain itself through Cloudflare (an A record, DNS only, pointing at the server), so it is live with no manual step.
 - `https://<slug>.<ip-dashes>.sslip.io` is a backup address that works with no DNS at all.

@@ -60,8 +60,8 @@ if (!DRY) {
   const upd = { SITE_URL: `https://${prettyHost || sslipHost}`, SITE_SLUG: slug, SITE_HOST: prettyHost || sslipHost, NOINDEX: flag('index') ? '0' : '1' };
   const redeploy = fs.existsSync(path.join(proj, '.deploy.json'));
   if (!flag('keep-password') && !redeploy) {
-    const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    password = Array.from(crypto.randomBytes(20)).map((x) => alphabet[x % alphabet.length]).join('');
+    // House rule: admin password is the company name, all lowercase, one word, then 1 (e.g. laqelectrical1).
+    password = String((cfg.business && cfg.business.name) || slug).toLowerCase().replace(/[^a-z0-9]+/g, '') + '1';
     upd.ADMIN_PASSWORD_HASH = crypto.createHash('sha256').update(password).digest('hex');
     fs.writeFileSync(path.join(proj, '.admin-password.txt'), password + '\n');
   }
