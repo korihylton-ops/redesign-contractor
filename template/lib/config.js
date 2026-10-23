@@ -22,7 +22,7 @@ const trade = Object.assign({
 
 /* ---------- business ---------- */
 const b = cfg.business || {};
-const e164 = b.phoneE164 || (digits(b.phone).startsWith('0') ? '+61' + digits(b.phone).slice(1) : '+' + digits(b.phone));
+const e164 = b.phoneE164 || (digits(b.phone).startsWith('0') ? '+61' + digits(b.phone).slice(1) : /^1(3|300|800)/.test(digits(b.phone)) ? '+61' + digits(b.phone) : '+' + digits(b.phone));
 const business = Object.assign({
   name: 'Your Business', legalName: '', phone: '', email: '', abn: '', abnLabel: 'ABN', licences: [], insurance: '',
   rating: '', reviewCount: 0, standardRate: null, afterHoursRate: null, firstJobDiscount: null,
