@@ -19,6 +19,7 @@ Turn an existing contractor website into a premium site: branded, animated, with
 6. **Never copy another business's copy.** Write original text.
 7. **Real photos first, and lots of them; generated images are the last resort.** Use the client's own photos, then free stock photos (`scripts/stock-photos.mjs`, see `docs/DESIGN.md`) until the site has 40 or more real photos. Only when neither works, generate images (Phase 3). Generated images must never be presented as real jobs, a real team or real people: prompts exclude people, text and logos, the site labels a generated gallery as illustrative, and you list every generated file in your report.
 8. **Every client looks different, and the front page has wow factor.** Do the custom design pass (Phase 3b) on every build, even when the user only types the command with a URL and says nothing about design. Read `~/.redesign-contractor/designs.log` and `~/.redesign-contractor/design-decisions.md` first, sketch three concepts, score them, record the chosen one in `design-decisions.md`, and never repeat a past client's fonts, hero treatment or shape language. Still a normal business website: never a concept layout.
+9. **Every header link opens its own page.** Services, About, Reviews, Recent work, Areas, Guides, Contact and every other menu item each get their own designed page, never a `/#section` jump on the home page. The front page stays a full wow-factor page whose sections tease each topic and link to its page, so the site visibly has lots of pages. Read `docs/PAGES.md` and follow it on every build.
 
 ## Inputs
 
@@ -121,6 +122,8 @@ node scripts/qa.mjs <project> --url http://localhost:3000
 node scripts/click-audit.mjs --url http://localhost:3000   # must end 0 FAILED
 ```
 
+Also run the header check in `docs/PAGES.md`: every header link must be a real page that returns 200 (no `/#` anchors). Screenshot each header page at 1440px and 390px.
+
 `qa.mjs` proves the machinery works. `click-audit.mjs` proves every button a visitor can see actually does something a visitor can see: it clicks every anchor and button on every page in the sitemap and judges the result, not the markup. It fails an in-page anchor whose target does not exist, an internal link that lands on a 404, and — deliberately — any prominent `.btn` whose href is `mailto:`, because on a device with no mail client that button produces no navigation, no error and no feedback at all, which is exactly how a dead button looks. Never report a site as working on the strength of a link existing, a 200 status or an href that parses; run this and read the summary.
 
 `qa.mjs` also fails any visible button whose text has under 3:1 contrast with its background (unreadable buttons look dead to visitors). Open the screenshots in `<project>/qa-shots/` and check them yourself: hero, services, reviews, a suburb page, an article, the chat, the admin. Compare the home page with the last client in `designs.log`: if they look alike, redo Phase 3b. Fix anything broken before reporting. If something fails, diagnose the cause before changing code.
@@ -160,6 +163,7 @@ Tell the user, briefly and honestly:
 - **Post a job:** tell the user the owner can post job photos from their phone (admin, "Post a job"); they appear first in "Recent jobs", so the site never depends on uploading through a CMS.
 - Which images are stock photos (see `public/images/photos/CREDITS.json`) or generated, rather than the client's own.
 - What was carried over (pages, words, suburbs, services) and the verification results.
+- The header pages with their links, and the total page count (`docs/PAGES.md`, "Tell the user").
 - A **CONFIRM list**: every price, rate, licence, offer or claim that came from an ambiguous source or that you could not verify (for example conflicting prices on the old site, placeholder upgrade offers, an unlicensed trade).
 - What is not built: PayPal and Google Calendar sync (shown in Settings as "Not built yet"), and anything skipped.
 

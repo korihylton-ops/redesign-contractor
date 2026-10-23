@@ -46,7 +46,7 @@ Section objects; every field optional with a sensible default: `meta{homeTitle,h
 - `regions{key:{label, outside?}}`, `suburbs[{slug,name,region,intro?,image?}]`, `regionPages[{slug,name,intro?,image?}]`. `outside: true` marks regions served only for larger jobs.
 - `offers[{id,title,body,active}]` upgrade offers the chat presents after capturing a lead (editable later in the admin). No prices: the team confirms them.
 - `chat{facts[], chips[], serviceKeywords[{pattern,service}], emergencyAdvice, emergencyPattern, dangerPattern}` optional tuning.
-- `nav[[href,label]]` overrides the header links.
+- `nav[[href,label]]` overrides the header links. Always set it to real page paths, never `/#` anchors (`docs/PAGES.md`).
 
 ## shop (optional)
 `enabled, heading, lede, homeLede, categories[], conditions[], installOffer, soldVisibleDays, testedLabel`. Off by default. See `docs/SHOP.md`.
