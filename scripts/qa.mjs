@@ -28,7 +28,9 @@ const errs = [];
 p.on('pageerror', (e) => errs.push(String(e)));
 p.on('console', (m) => { if (m.type() === 'error' && !/fonts\.|ERR_|Failed to load resource|favicon/.test(m.text())) errs.push(m.text()); });
 
-const paths = ['/', '/' + cfg.services[0].slug, '/' + prefix + cfg.suburbs[0].slug, '/' + prefix + cfg.regionPages[0].slug, '/robots.txt', '/sitemap.xml', '/admin.html'];
+const paths = ['/', '/' + cfg.services[0].slug, '/robots.txt', '/sitemap.xml', '/admin.html'];
+if (cfg.suburbs.length) paths.splice(2, 0, '/' + prefix + cfg.suburbs[0].slug);
+if (cfg.regionPages.length) paths.splice(-3, 0, '/' + prefix + cfg.regionPages[0].slug);
 for (const u of paths) { const r = await ctx.request.get(SITE + u); ok('GET ' + u + ' is 200', r.status() === 200, String(r.status())); }
 ok('unknown path is 404', (await ctx.request.get(SITE + '/no-such-page')).status() === 404);
 
@@ -70,7 +72,7 @@ await p.goto(SITE, { waitUntil: 'networkidle' }); await p.waitForTimeout(1500);
 ok('every configured suburb is linked', (await p.locator('.regions a').count()) === cfg.suburbs.length, `${await p.locator('.regions a').count()}/${cfg.suburbs.length}`);
 for (const im of await p.locator('.work img').all()) await im.scrollIntoViewIfNeeded();
 await p.waitForTimeout(1500);
-ok('gallery images load', await p.$$eval('.work img', (a) => a.length > 0 && a.every((i) => i.complete && i.naturalWidth > 0)));
+ok('gallery images load', !cfg.gallery.length || await p.$eval('.work img', (a) => a.length > 0 && a.every((i) => i.complete && i.naturalWidth > 0)));
 
 // form -> backend
 await p.locator('#quote').scrollIntoViewIfNeeded();

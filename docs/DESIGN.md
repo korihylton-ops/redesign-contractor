@@ -138,6 +138,15 @@ you changed.
    text and the quote section.
 4. Optional config keys the example reads: `copy.heroNote.text`, `copy.band.{heading,body}`,
    `copy.services.moreHeading`, `images.collage` (three image paths).
+5. **Overlaps must not survive into the stacked mobile layout.** A negative `margin-top` (or `top`/`translate`)
+   that tucks a card under a photo or badge on desktop usually makes the card cover the item above it once
+   the layout stacks on a phone. In every mobile media query, reset those pulls and put a real gap between
+   stacked hero items: at least `10px`. Grid and flex margins don't collapse, so the gap is the two margins
+   added together. Set one of them to the gap and the other to `0`.
+   Example (SET Maritime, user report 2026-10-23): at 640px and below, the "Award winner" chip
+   (`position: relative; margin-bottom: 1rem`) was covered by the ESHORE demo card (`margin-top: -40px`).
+   The fix is `.sl-award-chip { margin-bottom: 0 }` and `.sl-demo { margin-top: 10px }` inside
+   `@media (max-width: 640px)`. Keep the desktop overlap if it's intended. Only the stacked layout needs the gap.
 
 `examples/custom-home/` is an earlier electrician build. Treat it as a reference for how the hooks connect, never as
 a template to restyle. If your result looks like it with different colours, start again.
@@ -175,7 +184,7 @@ jobs through **Post a job** in the admin (those appear first automatically).
 
 Screenshot the home page and one service, suburb and guide page at 1440px and 390px, and read every
 screenshot. Then do the side-by-side from "Beat the old site, section by section" above: every section,
-testimonials and the bottom of the page included, must clearly beat the old site's version. Look for: unreadable buttons, text touching borders, photos that contradict the copy, empty
+testimonials and the bottom of the page included, must clearly beat the old site's version. Look for: one element covering another on the 390px shot (badges, chips, cards and the hero photo especially; stacked items need at least 10px between them, see 3.5), unreadable buttons, text touching borders, photos that contradict the copy, empty
 columns, anything that looks like a previous client's site. `qa.mjs` now fails any button whose text has
 less than 3:1 contrast with its background; fix those in the theme CSS.
 
