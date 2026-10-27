@@ -72,7 +72,7 @@ await p.goto(SITE, { waitUntil: 'networkidle' }); await p.waitForTimeout(1500);
 ok('every configured suburb is linked', (await p.locator('.regions a').count()) === cfg.suburbs.length, `${await p.locator('.regions a').count()}/${cfg.suburbs.length}`);
 for (const im of await p.locator('.work img').all()) await im.scrollIntoViewIfNeeded();
 await p.waitForTimeout(1500);
-ok('gallery images load', !cfg.gallery.length || await p.$eval('.work img', (a) => a.length > 0 && a.every((i) => i.complete && i.naturalWidth > 0)));
+ok('gallery images load', !cfg.gallery.length || await p.$$eval('.work img', (a) => a.length > 0 && a.every((i) => i.complete && i.naturalWidth > 0)));
 
 // form -> backend
 await p.locator('#quote').scrollIntoViewIfNeeded();
