@@ -17,7 +17,9 @@ const S = req(path.join(proj, 'lib', 'site.js'));
 const pages = req(path.join(proj, 'lib', 'pages.js')).buildAll();
 
 const decode = (s) => s.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
-const norm = (s) => decode(s).replace(/<[^>]+>/g, ' ').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').replace(/ ([,.;:!?])/g, '$1').replace(/(\d) (?=\d)/g, '$1').trim().toLowerCase();
+// Strip tags BEFORE decoding entities: decoding first turns text such as "&lt;2%" or "On&gt;Off&lt;" into
+// something that looks like a tag, which was then stripped and reported as missing text.
+const norm = (s) => decode(String(s).replace(/<[^>]+>/g, ' ')).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').replace(/ ([,.;:!?])/g, '$1').replace(/(\d) (?=\d)/g, '$1').trim().toLowerCase();
 
 let total = 0, found = 0;
 const missing = [];
